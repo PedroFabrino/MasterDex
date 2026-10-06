@@ -22,7 +22,20 @@ _Avoid_: Secret art plus, SA+, bonus card
 An expansion saved to a collector profile's watchlist for active investment monitoring.
 _Avoid_: Pinned set, favorite expansion
 
+**Expansion Catalog**:
+The complete directory of all official Pokémon TCG expansions indexed from the Card Search Provider (TCGdex).
+_Avoid_: Set list, all sets dump
+
 ### Investment & Valuation
+
+**Collection Gap Yield**:
+The total number of cards in an expansion matching or exceeding the collector's Target Rarity Filter for which the collector does not yet own a card of equal or greater rarity assigned to that Pokémon's Binder Slot.
+_Avoid_: New card count, missing loot, pack value
+
+**Target Rarity Filter**:
+The collector-configured rarity threshold (default: Any Rarity / All Cards; selectable: Holo Rare+, Ultra Rare+, Illustration Rare+, Secret Rare / SA+) defining what minimum tier of card satisfies a Binder Slot.
+_Avoid_: Rarity toggle, tier setting
+
 
 **Chase Card**:
 The single most valuable secret rare card in an expansion that drives the primary collector demand and ceiling price.
