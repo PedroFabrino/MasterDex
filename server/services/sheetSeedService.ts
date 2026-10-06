@@ -44,7 +44,7 @@ export class SheetSeedService {
     })
 
     if (!res.ok) return null
-    const data = await res.json()
+    const data = (await res.json()) as any
     const files = data.files || []
     return files.length > 0 ? files[0].id : null
   }
@@ -60,7 +60,7 @@ export class SheetSeedService {
     })
 
     if (!res.ok) return []
-    const data = await res.json()
+    const data = (await res.json()) as any
     return data.values || []
   }
 

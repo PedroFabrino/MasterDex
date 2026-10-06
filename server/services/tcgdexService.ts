@@ -151,9 +151,6 @@ export class TcgDexService {
       const setId = (card.id.split('-')[0] || '').toLowerCase()
       const setMeta = setsMap.get(setId)
 
-      const cardLocalNormalized = String(card.localId || '').replace(/^0+/, '')
-      const isExactNumberMatch = targetLocalId && cardLocalNormalized === targetLocalId
-
       const imageUrl = card.image.endsWith('.webp') || card.image.endsWith('.png')
         ? card.image
         : `${card.image}/high.webp`
