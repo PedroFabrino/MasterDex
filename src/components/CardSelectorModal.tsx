@@ -1,11 +1,11 @@
-import { useState, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { type Pokemon, type TcgCard, type CollectedSlot, TCG_CARDS } from "@/data/pokemon"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { CheckCircle, X, Search, Star } from "lucide-react"
+import { CheckCircle, X, Search, Star, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface CardSelectorModalProps {
@@ -26,15 +26,73 @@ export function CardSelectorModal({
   onUnmark,
 }: CardSelectorModalProps) {
   const [query, setQuery] = useState(pokemon?.name ?? "")
+  const [debouncedQuery, setDebouncedQuery] = useState(pokemon?.name ?? "")
+  const [liveCards, setLiveCards] = useState<TcgCard[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
-  const cards = pokemon ? (TCG_CARDS[pokemon.id] ?? []) : []
-  const filtered = cards.filter(
-    (c) =>
-      query.trim() === "" ||
-      c.name.toLowerCase().includes(query.toLowerCase()) ||
-      c.setName.toLowerCase().includes(query.toLowerCase()) ||
-      c.number.toLowerCase().includes(query.toLowerCase())
-  )
+  // Reset search query whenever target pokemon changes or modal opens
+  useEffect(() => {
+    if (open && pokemon) {
+      setQuery(pokemon.name)
+      setDebouncedQuery(pokemon.name)
+    }
+  }, [open, pokemon])
+
+  // Debounce input to prevent spamming API requests
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query)
+    }, 280)
+    return () => clearTimeout(timer)
+  }, [query])
+
+  // Query live TCGdex card search API
+  useEffect(() => {
+    if (!open || !debouncedQuery.trim()) {
+      setLiveCards(pokemon ? TCG_CARDS[pokemon.id] ?? [] : [])
+      return
+    }
+
+    let cancelled = false
+    setIsLoading(true)
+
+    fetch(`/api/tcg/cards/search?q=${encodeURIComponent(debouncedQuery)}&limit=24`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Search failed")
+        return res.json()
+      })
+      .then((data) => {
+        if (cancelled) return
+        if (Array.isArray(data.results) && data.results.length > 0) {
+          const mapped: TcgCard[] = data.results.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            setName: r.set?.name || r.id.split("-")[0]?.toUpperCase() || "TCG",
+            number: r.set?.total ? `${r.localId}/${r.set.total}` : String(r.localId),
+            imageUrl: r.imageUrl,
+            isHolo:
+              r.rarity?.toLowerCase().includes("holo") ||
+              r.rarity?.toLowerCase().includes("rare") ||
+              false,
+          }))
+          setLiveCards(mapped)
+        } else {
+          // Fallback to local mock cards if no results returned
+          setLiveCards(pokemon ? TCG_CARDS[pokemon.id] ?? [] : [])
+        }
+      })
+      .catch(() => {
+        if (cancelled) return
+        setLiveCards(pokemon ? TCG_CARDS[pokemon.id] ?? [] : [])
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [debouncedQuery, open, pokemon])
 
   const handleOpen = useCallback(
     (isOpen: boolean) => {
@@ -92,15 +150,26 @@ export function CardSelectorModal({
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search card set, number..."
-            className="pl-9 bg-zinc-800/60 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 focus-visible:border-zinc-500 focus-visible:ring-zinc-500/30"
+            placeholder="Search card by name or number (e.g. Mew ex 129/103)..."
+            className="pl-9 pr-9 bg-zinc-800/60 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 focus-visible:border-zinc-500 focus-visible:ring-zinc-500/30"
           />
+          {isLoading && (
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-violet-400 animate-spin" />
+          )}
         </div>
 
         <div>
-          <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold mb-3">
-            Select Card Artwork
-          </p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">
+              Select Card Artwork
+            </p>
+            {liveCards.length > 0 && (
+              <span className="text-[11px] text-zinc-500 font-mono">
+                {liveCards.length} cards found
+              </span>
+            )}
+          </div>
+
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
             {/* Slot #1 - Default sprite anchor */}
             <button
@@ -123,7 +192,7 @@ export function CardSelectorModal({
                   style={{ imageRendering: "pixelated" }}
                 />
               </div>
-              <span className="text-xs text-zinc-400 text-center leading-tight font-medium">
+              <span className="text-xs text-zinc-300 text-center leading-tight font-medium">
                 Default Sprite
               </span>
               {slot?.tcgCard === null && (
@@ -131,72 +200,71 @@ export function CardSelectorModal({
               )}
             </button>
 
-            {/* TCG card slots */}
-            {filtered.map((card) => (
-              <button
-                key={card.id}
-                onClick={() => {
-                  onSelectCard(pokemon.id, card)
-                  onClose()
-                }}
-                className={cn(
-                  "group relative flex flex-col items-center gap-2 rounded-xl border-2 p-2 transition-all duration-200 cursor-pointer",
-                  slot?.tcgCard?.id === card.id
-                    ? "border-violet-500 bg-violet-950/30"
-                    : "border-zinc-700 bg-zinc-800/40 hover:border-zinc-500 hover:bg-zinc-800"
-                )}
-              >
-                <div className="aspect-[2.5/3.5] w-full overflow-hidden rounded-lg">
-                  <img
-                    src={card.imageUrl}
-                    alt={`${card.name} ${card.number}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      const t = e.currentTarget
-                      t.src = pokemon.spriteUrl
-                      t.style.imageRendering = "pixelated"
-                      t.style.objectFit = "contain"
-                      t.classList.add("p-2")
-                    }}
-                  />
-                </div>
-                <div className="w-full text-center space-y-0.5">
-                  <div className="flex items-center justify-center gap-1">
-                    <span className="text-xs text-zinc-300 font-medium truncate max-w-full">
-                      {card.setName}
-                    </span>
-                    {card.isHolo && (
-                      <Star className="size-2.5 text-amber-400 shrink-0 fill-amber-400" />
-                    )}
+            {/* TCG card slots from live TCGdex API */}
+            {liveCards.map((card) => {
+              const isSelected =
+                slot?.tcgCard?.id === card.id || slot?.tcgCard?.imageUrl === card.imageUrl
+
+              return (
+                <button
+                  key={card.id}
+                  onClick={() => {
+                    onSelectCard(pokemon.id, card)
+                    onClose()
+                  }}
+                  className={cn(
+                    "group relative flex flex-col items-center gap-2 rounded-xl border-2 p-2 transition-all duration-200 cursor-pointer",
+                    isSelected
+                      ? "border-violet-500 bg-violet-950/30"
+                      : "border-zinc-700 bg-zinc-800/40 hover:border-zinc-500 hover:bg-zinc-800"
+                  )}
+                >
+                  <div className="aspect-[2.5/3.5] w-full overflow-hidden rounded-lg bg-zinc-950">
+                    <img
+                      src={card.imageUrl}
+                      alt={`${card.name} ${card.number}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        const t = e.currentTarget
+                        t.src = pokemon.spriteUrl
+                        t.style.imageRendering = "pixelated"
+                        t.style.objectFit = "contain"
+                        t.classList.add("p-2")
+                      }}
+                    />
                   </div>
-                  <span className="text-xs text-zinc-500 font-mono">{card.number}</span>
-                </div>
-                {slot?.tcgCard?.id === card.id && (
-                  <CheckCircle className="absolute top-1.5 right-1.5 size-4 text-violet-400" />
-                )}
-                {card.isHolo && (
-                  <Badge
-                    variant="outline"
-                    className="absolute top-1.5 left-1.5 text-[9px] px-1 py-0 h-4 border-amber-600/60 text-amber-400 bg-amber-950/50"
-                  >
-                    HOLO
-                  </Badge>
-                )}
-              </button>
-            ))}
+                  <div className="w-full text-center space-y-0.5">
+                    <div className="flex items-center justify-center gap-1">
+                      <span className="text-xs text-zinc-300 font-medium truncate max-w-full">
+                        {card.setName}
+                      </span>
+                      {card.isHolo && (
+                        <Star className="size-2.5 text-amber-400 shrink-0 fill-amber-400" />
+                      )}
+                    </div>
+                    <span className="text-xs text-zinc-500 font-mono">{card.number}</span>
+                  </div>
+                  {isSelected && (
+                    <CheckCircle className="absolute top-1.5 right-1.5 size-4 text-violet-400" />
+                  )}
+                  {card.isHolo && (
+                    <Badge
+                      variant="outline"
+                      className="absolute top-1.5 left-1.5 text-[9px] px-1 py-0 h-4 border-amber-600/60 text-amber-400 bg-amber-950/50"
+                    >
+                      HOLO
+                    </Badge>
+                  )}
+                </button>
+              )
+            })}
 
-            {filtered.length === 0 && cards.length > 0 && (
-              <div className="col-span-4 py-6 text-center text-zinc-500 text-sm">
-                No cards match your search.
-              </div>
-            )}
-
-            {cards.length === 0 && (
-              <div className="col-span-4 py-6 text-center text-zinc-500 text-sm">
-                No TCG cards in mock data for this Pokémon.
+            {!isLoading && liveCards.length === 0 && (
+              <div className="col-span-3 sm:col-span-4 py-8 text-center text-zinc-500 text-sm">
+                No TCG cards found for &ldquo;{debouncedQuery}&rdquo;.
                 <br />
                 <span className="text-xs text-zinc-600">
-                  Only the default sprite is available.
+                  Try searching with the Pokémon name and collector number (e.g. Mew ex 129/103).
                 </span>
               </div>
             )}
