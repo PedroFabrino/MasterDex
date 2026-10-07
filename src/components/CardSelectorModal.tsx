@@ -2,20 +2,14 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { type Pokemon, type TcgCard, type CollectedSlot, TCG_CARDS } from "@/data/pokemon"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { X, Search, Filter, Loader2 } from "lucide-react"
+import { X } from "lucide-react"
 import { useTranslation } from "@/i18n"
+import { apiClient } from "@/lib/apiClient"
+import { mapSearchResultToTcgCard } from "@/lib/cardMapping"
 import { CardSelectorGrid } from "./CardSelectorGrid"
 import { CardPrintLanguageSelector } from "./CardPrintLanguageSelector"
+import { CardSelectorSearch } from "./CardSelectorSearch"
 
 interface CardSelectorModalProps {
   pokemon: Pokemon | null
@@ -47,20 +41,15 @@ export function CardSelectorModal({
 
   const sentinelRef = useRef<HTMLDivElement | null>(null)
 
-  // Initialize or reload target rarity and print language on modal open
   useEffect(() => {
     if (open) {
       try {
         const stored = localStorage.getItem("masterdex_collector_preferences")
         if (stored) {
           const pref = JSON.parse(stored)
-          if (pref.targetRarity) {
-            setRarity(pref.targetRarity)
-          }
+          if (pref.targetRarity) setRarity(pref.targetRarity)
         }
-      } catch {
-        // fallback to default
-      }
+      } catch {}
 
       if (slot?.cardLanguage) {
         setSelectedLanguage(slot.cardLanguage)
@@ -72,7 +61,6 @@ export function CardSelectorModal({
     }
   }, [open, slot])
 
-  // Reset search query whenever target pokemon changes or modal opens
   useEffect(() => {
     if (open && pokemon) {
       setQuery(pokemon.name)
@@ -80,18 +68,13 @@ export function CardSelectorModal({
     }
   }, [open, pokemon])
 
-  // Debounce input to prevent spamming API requests
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(query)
-    }, 280)
+    const timer = setTimeout(() => setDebouncedQuery(query), 280)
     return () => clearTimeout(timer)
   }, [query])
 
-  // Detect whether the current query contains a collector number or fraction
   const isCodeQuery = /^(.*?\s+)?\d+(\/\d+)?(\s+.*)?$/.test(debouncedQuery.trim())
 
-  // Query live TCGdex card search API (initial batch)
   useEffect(() => {
     if (!open || !debouncedQuery.trim()) {
       const fallback = pokemon ? TCG_CARDS[pokemon.id] ?? [] : []
@@ -101,38 +84,28 @@ export function CardSelectorModal({
       return
     }
 
-    let cancelled = false
+    const controller = new AbortController()
     setIsLoading(true)
 
-    const dexIdParam = pokemon ? `&dexId=${pokemon.id}` : ""
-    const rarityParam = rarity ? `&rarity=${encodeURIComponent(rarity)}` : ""
-    const langParam = selectedLanguage ? `&lang=${encodeURIComponent(selectedLanguage)}` : "&lang=all"
-    fetch(`/api/tcg/cards/search?q=${encodeURIComponent(debouncedQuery)}${dexIdParam}${rarityParam}${langParam}&limit=24&offset=0`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Search failed")
-        return res.json()
-      })
+    apiClient
+      .searchCards(
+        {
+          query: debouncedQuery,
+          dexId: pokemon?.id,
+          rarity,
+          lang: selectedLanguage,
+          limit: 24,
+          offset: 0,
+        },
+        controller.signal
+      )
       .then((data) => {
-        if (cancelled) return
-        if (Array.isArray(data.results) && data.results.length > 0) {
-          const mapped: TcgCard[] = data.results.map((r: any) => ({
-            id: r.id,
-            name: r.name,
-            setName: r.set?.name || r.id.split("-")[0]?.toUpperCase() || "TCG",
-            number: r.set?.total ? `${r.localId}/${r.set.total}` : String(r.localId),
-            imageUrl: r.imageUrl,
-            thumbnailUrl: r.thumbnailUrl || r.imageUrl,
-            isHolo:
-              r.rarity?.toLowerCase().includes("holo") ||
-              r.rarity?.toLowerCase().includes("rare") ||
-              false,
-            language: r.language || "en",
-          }))
+        if (data.results?.length > 0) {
+          const mapped = data.results.map(mapSearchResultToTcgCard)
           setLiveCards(mapped)
-          setTotalCount(typeof data.total === "number" ? data.total : mapped.length)
+          setTotalCount(data.total ?? mapped.length)
           setHasMore(Boolean(data.hasMore))
         } else {
-          // Fallback to local mock cards if no results returned
           const fallback = pokemon ? TCG_CARDS[pokemon.id] ?? [] : []
           setLiveCards(fallback)
           setTotalCount(fallback.length)
@@ -140,48 +113,35 @@ export function CardSelectorModal({
         }
       })
       .catch(() => {
-        if (cancelled) return
+        if (controller.signal.aborted) return
         const fallback = pokemon ? TCG_CARDS[pokemon.id] ?? [] : []
         setLiveCards(fallback)
         setTotalCount(fallback.length)
         setHasMore(false)
       })
       .finally(() => {
-        if (!cancelled) setIsLoading(false)
+        if (!controller.signal.aborted) setIsLoading(false)
       })
 
-    return () => {
-      cancelled = true
-    }
+    return () => controller.abort()
   }, [debouncedQuery, rarity, selectedLanguage, open, pokemon])
 
-  // Load next batch (lazy loading / pagination)
   const handleLoadMore = useCallback(() => {
     if (isLoading || isLoadingMore || !hasMore || !pokemon) return
     setIsLoadingMore(true)
-    const dexIdParam = `&dexId=${pokemon.id}`
-    const rarityParam = rarity ? `&rarity=${encodeURIComponent(rarity)}` : ""
-    const langParam = selectedLanguage ? `&lang=${encodeURIComponent(selectedLanguage)}` : "&lang=all"
-    const offset = liveCards.length
-    fetch(
-      `/api/tcg/cards/search?q=${encodeURIComponent(debouncedQuery)}${dexIdParam}${rarityParam}${langParam}&limit=24&offset=${offset}`
-    )
-      .then((res) => res.json())
+
+    apiClient
+      .searchCards({
+        query: debouncedQuery,
+        dexId: pokemon.id,
+        rarity,
+        lang: selectedLanguage,
+        limit: 24,
+        offset: liveCards.length,
+      })
       .then((data) => {
-        if (Array.isArray(data.results) && data.results.length > 0) {
-          const mapped: TcgCard[] = data.results.map((r: any) => ({
-            id: r.id,
-            name: r.name,
-            setName: r.set?.name || r.id.split("-")[0]?.toUpperCase() || "TCG",
-            number: r.set?.total ? `${r.localId}/${r.set.total}` : String(r.localId),
-            imageUrl: r.imageUrl,
-            thumbnailUrl: r.thumbnailUrl || r.imageUrl,
-            isHolo:
-              r.rarity?.toLowerCase().includes("holo") ||
-              r.rarity?.toLowerCase().includes("rare") ||
-              false,
-            language: r.language || "en",
-          }))
+        if (data.results?.length > 0) {
+          const mapped = data.results.map(mapSearchResultToTcgCard)
           setLiveCards((prev) => [...prev, ...mapped])
           setHasMore(Boolean(data.hasMore))
         } else {
@@ -192,14 +152,11 @@ export function CardSelectorModal({
       .finally(() => setIsLoadingMore(false))
   }, [isLoading, isLoadingMore, hasMore, pokemon, debouncedQuery, rarity, selectedLanguage, liveCards.length])
 
-  // Lazy loading observer for bottom sentinel
   useEffect(() => {
     if (!sentinelRef.current || !hasMore || isLoading || isLoadingMore) return
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
-          handleLoadMore()
-        }
+        if (entries[0]?.isIntersecting) handleLoadMore()
       },
       { rootMargin: "150px" }
     )
@@ -240,12 +197,8 @@ export function CardSelectorModal({
                 />
               </div>
               <div>
-                <DialogTitle className="text-zinc-100 text-xl font-bold">
-                  {pokemon.name}
-                </DialogTitle>
-                <p className="text-zinc-400 text-sm font-mono">
-                  #{String(pokemon.id).padStart(3, "0")}
-                </p>
+                <DialogTitle className="text-zinc-100 text-xl font-bold">{pokemon.name}</DialogTitle>
+                <p className="text-zinc-400 text-sm font-mono">#{String(pokemon.id).padStart(3, "0")}</p>
               </div>
             </div>
             {slot && (
@@ -267,54 +220,19 @@ export function CardSelectorModal({
 
         <Separator className="bg-zinc-700/60" />
 
-        {/* Search Input & Rarity Filter Header */}
-        <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("cardSelector.searchPlaceholder")}
-              className="pl-9 pr-9 bg-zinc-800/60 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 focus-visible:border-zinc-500 focus-visible:ring-zinc-500/30"
-            />
-            {isLoading && (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-violet-400 animate-spin" />
-            )}
-          </div>
+        <CardSelectorSearch
+          query={query}
+          onQueryChange={setQuery}
+          isLoading={isLoading}
+          rarity={rarity}
+          onRarityChange={setRarity}
+          isCodeQuery={isCodeQuery}
+        />
 
-          <div className="flex items-center gap-2 shrink-0">
-            <Filter className="size-3.5 text-zinc-400 shrink-0" />
-            <span className="text-xs text-zinc-400 whitespace-nowrap">{t("cardSelector.rarityFilter")}:</span>
-            <Select value={rarity} onValueChange={setRarity}>
-              <SelectTrigger className="w-36 h-9 bg-zinc-800/80 border-zinc-700 text-zinc-200 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-800 border-zinc-700">
-                <SelectItem value="any" className="text-zinc-200 text-xs">{t("investor.rarityAny")}</SelectItem>
-                <SelectItem value="holo" className="text-zinc-200 text-xs">{t("investor.rarityHolo")}</SelectItem>
-                <SelectItem value="ultra" className="text-zinc-200 text-xs">{t("investor.rarityUltra")}</SelectItem>
-                <SelectItem value="illustration" className="text-zinc-200 text-xs">{t("investor.rarityIllustration")}</SelectItem>
-                <SelectItem value="secret" className="text-zinc-200 text-xs">{t("investor.raritySecret")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Card Print Language Selector */}
         <CardPrintLanguageSelector
           selectedLanguage={selectedLanguage}
           onSelectLanguage={setSelectedLanguage}
         />
-
-        {/* Collector Number Bypass Notification */}
-        {isCodeQuery && rarity !== "any" && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-950/40 border border-amber-800/60 text-amber-300 text-xs">
-            <Badge variant="outline" className="border-amber-600/80 text-amber-400 text-[10px] uppercase font-semibold">
-              Bypass
-            </Badge>
-            <span>{t("cardSelector.rarityBypassedHint")}</span>
-          </div>
-        )}
 
         <div>
           <div className="flex items-center justify-between mb-3">

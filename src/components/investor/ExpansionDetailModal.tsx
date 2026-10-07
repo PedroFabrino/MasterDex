@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Sparkles, Loader2, RefreshCw, ExternalLink, TrendingUp } from "lucide-react"
 import { useTranslation } from "@/i18n"
+import { apiClient } from "@/lib/apiClient"
 import type { Expansion, Card } from "../../../shared/types.js"
 
 interface ExpansionDetailModalProps {
@@ -36,11 +37,8 @@ export function ExpansionDetailModal({
     let cancelled = false
     setIsLoading(true)
 
-    fetch(`/api/tcg/expansions/${encodeURIComponent(expansion.slug)}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load details")
-        return res.json()
-      })
+    apiClient
+      .getExpansionDetails(expansion.slug)
       .then((data) => {
         if (cancelled) return
         setDetailData({

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react"
 import { POKEMON, type CollectedSlot, type TcgCard } from "@/data/pokemon"
 import { type CollectorProfile } from "@/components/auth/AuthModal"
 import { mergeCloudAndLocalCollection } from "@/lib/collectionMerge"
+import { apiClient } from "@/lib/apiClient"
+import { mapCollectionItemsToRecord, toBatchSyncEntry, toCollectedSlot } from "@/lib/cardMapping"
 
 export interface UseCollectionOptions {
   currentUser: CollectorProfile | null
@@ -30,33 +32,13 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
       return
     }
 
-    fetch(`/api/collection?userId=${encodeURIComponent(currentUser.id)}`)
-      .then((res) => (res.ok ? res.json() : null))
+    apiClient
+      .getCollection(currentUser.id)
       .then((data) => {
         if (data?.items && Object.keys(data.items).length > 0) {
           setCollected((prev) => {
             if (Object.keys(prev).length >= Object.keys(data.items).length) return prev
-            const loaded: Record<number, CollectedSlot> = {}
-            for (const [idStr, item] of Object.entries<any>(data.items)) {
-              const id = Number(idStr)
-              if (item.collected) {
-                loaded[id] = {
-                  pokemonId: id,
-                  tcgCard: item.cardId
-                    ? {
-                        id: item.cardId,
-                        name: item.cardName || "",
-                        setName: item.cardId.split("-")[0]?.toUpperCase() || "TCG",
-                        number: item.cardId.split("-")[1] || "1",
-                        imageUrl: item.cardImageUrl || "",
-                        language: item.cardLanguage || "en",
-                      }
-                    : null,
-                  cardLanguage: item.cardLanguage || undefined,
-                }
-              }
-            }
-            return loaded
+            return mapCollectionItemsToRecord(data.items)
           })
         }
       })
@@ -75,21 +57,20 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
       }
     ) => {
       if (!currentUser) return
-      fetch(`/api/collection/${pokemonId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(currentUser.sessionToken ? { Authorization: `Bearer ${currentUser.sessionToken}` } : {}),
-        },
-        body: JSON.stringify({
-          userId: currentUser.id,
-          collected: opts.collected,
-          cardId: opts.cardId ?? null,
-          cardName: opts.cardName ?? null,
-          cardImageUrl: opts.cardImageUrl ?? null,
-          cardLanguage: opts.cardLanguage ?? null,
-        }),
-      }).catch(() => {})
+      apiClient
+        .patchSlot(
+          pokemonId,
+          {
+            userId: currentUser.id,
+            collected: opts.collected,
+            cardId: opts.cardId ?? null,
+            cardName: opts.cardName ?? null,
+            cardImageUrl: opts.cardImageUrl ?? null,
+            cardLanguage: opts.cardLanguage ?? null,
+          },
+          currentUser.sessionToken
+        )
+        .catch(() => {})
     },
     [currentUser]
   )
@@ -97,9 +78,7 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
   const mergeAndSyncUser = useCallback(
     async (profile: CollectorProfile) => {
       try {
-        const res = await fetch(`/api/collection?userId=${encodeURIComponent(profile.id)}`)
-        if (!res.ok) return
-        const data = (await res.json()) as any
+        const data = await apiClient.getCollection(profile.id)
         if (!data?.items) return
 
         let slotsToBatchSync: Array<{ pokemonId: number; slot: CollectedSlot }> = []
@@ -110,26 +89,8 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
         })
 
         if (slotsToBatchSync.length > 0) {
-          const entries = slotsToBatchSync.map(({ pokemonId, slot }) => ({
-            pokedexId: pokemonId,
-            collected: true,
-            cardId: slot.tcgCard?.id ?? null,
-            cardName: slot.tcgCard?.name ?? null,
-            cardImageUrl: slot.tcgCard?.imageUrl ?? null,
-            cardLanguage: slot.cardLanguage ?? slot.tcgCard?.language ?? null,
-          }))
-
-          await fetch("/api/collection/batch", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(profile.sessionToken ? { Authorization: `Bearer ${profile.sessionToken}` } : {}),
-            },
-            body: JSON.stringify({
-              userId: profile.id,
-              entries,
-            }),
-          }).catch(() => {})
+          const entries = slotsToBatchSync.map(({ pokemonId, slot }) => toBatchSyncEntry(pokemonId, slot))
+          await apiClient.batchSyncCollection(profile.id, entries, profile.sessionToken).catch(() => {})
         }
       } catch {}
     },
@@ -140,7 +101,7 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
     (pokemonId: number) => {
       setCollected((prev) => ({
         ...prev,
-        [pokemonId]: { pokemonId, tcgCard: null },
+        [pokemonId]: toCollectedSlot(pokemonId, null),
       }))
       syncSlotToBackend(pokemonId, { collected: true })
     },
@@ -152,7 +113,7 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
       const finalLang = cardLanguage ?? card?.language ?? "en"
       setCollected((prev) => ({
         ...prev,
-        [pokemonId]: { pokemonId, tcgCard: card, cardLanguage: card ? finalLang : undefined },
+        [pokemonId]: toCollectedSlot(pokemonId, card, card ? finalLang : undefined),
       }))
       syncSlotToBackend(pokemonId, {
         collected: true,
@@ -178,21 +139,18 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
   )
 
   const totalCollected = POKEMON.filter((p) => collected[p.id]).length
-  const totalCards = Object.values(collected).filter((s) => s?.tcgCard != null).length
-  const rawPct = (totalCollected / POKEMON.length) * 100
-  const totalPct =
-    totalCollected === 0 ? "0" : totalCollected === POKEMON.length ? "100" : rawPct.toFixed(1)
+  const totalCards = Object.values(collected).filter((s) => s.tcgCard).length
+  const totalPct = Math.round((totalCollected / POKEMON.length) * 100)
 
   return {
     collected,
     setCollected,
-    markSlotCollected,
-    handleSelectCard,
-    handleUnmark,
-    syncSlotToBackend,
-    mergeAndSyncUser,
     totalCollected,
     totalCards,
     totalPct,
+    markSlotCollected,
+    handleSelectCard,
+    handleUnmark,
+    mergeAndSyncUser,
   }
 }

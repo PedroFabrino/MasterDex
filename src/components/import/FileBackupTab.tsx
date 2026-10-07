@@ -2,6 +2,13 @@ import React, { useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Download, Upload, Loader2 } from "lucide-react"
 import { POKEMON, type CollectedSlot } from "@/data/pokemon"
+import { apiClient } from "@/lib/apiClient"
+import {
+  mapCollectionItemsToRecord,
+  toTcgCard,
+  toBatchSyncEntry,
+  toCollectedSlot,
+} from "@/lib/cardMapping"
 import { useTranslation } from "@/i18n"
 
 interface FileBackupTabProps {
@@ -79,50 +86,15 @@ export const FileBackupTab: React.FC<FileBackupTabProps> = ({
         if (file.name.endsWith(".json")) {
           const parsed = JSON.parse(content)
           const rawCollection = parsed.collection || parsed
-          const nextCollected: Record<number, CollectedSlot> = {}
-          const syncEntries: Array<{
-            pokedexId: number
-            collected: boolean
-            cardId?: string | null
-            cardName?: string | null
-            cardImageUrl?: string | null
-          }> = []
-
-          for (const [key, value] of Object.entries(rawCollection)) {
-            const dexId = Number(key)
-            if (isNaN(dexId) || dexId <= 0) continue
-
-            const val = value as any
-            const isColl = val === true || !!val.pokemonId || val.collected === true
-            if (isColl) {
-              const card = val.tcgCard ?? (val.cardId ? {
-                id: val.cardId,
-                name: val.cardName || "",
-                setName: val.cardId.split("-")[0]?.toUpperCase() || "TCG",
-                number: val.cardId.split("-")[1] || "1",
-                imageUrl: val.cardImageUrl || val.imageUrl || "",
-              } : null)
-
-              nextCollected[dexId] = { pokemonId: dexId, tcgCard: card }
-              syncEntries.push({
-                pokedexId: dexId,
-                collected: true,
-                cardId: card?.id ?? null,
-                cardName: card?.name ?? null,
-                cardImageUrl: card?.imageUrl ?? null,
-              })
-            }
-          }
+          const nextCollected = mapCollectionItemsToRecord(rawCollection)
+          const syncEntries = Object.entries(nextCollected).map(([dexId, slot]) =>
+            toBatchSyncEntry(Number(dexId), slot)
+          )
 
           onUpdateCollection(nextCollected)
           if (userId) {
-            await fetch("/api/collection/batch", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ userId, entries: syncEntries }),
-            }).catch(() => {})
+            await apiClient.batchSyncCollection(userId, syncEntries).catch(() => {})
           }
-
 
           setStatusMessage({
             type: "success",
@@ -131,13 +103,7 @@ export const FileBackupTab: React.FC<FileBackupTabProps> = ({
         } else {
           const lines = content.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0)
           const nextCollected: Record<number, CollectedSlot> = { ...collected }
-          const syncEntries: Array<{
-            pokedexId: number
-            collected: boolean
-            cardId?: string | null
-            cardName?: string | null
-            cardImageUrl?: string | null
-          }> = []
+          const syncEntries: ReturnType<typeof toBatchSyncEntry>[] = []
 
           for (const line of lines) {
             const parts = line.split(",").map((p) => p.replace(/^"|"$/g, "").trim())
@@ -147,34 +113,24 @@ export const FileBackupTab: React.FC<FileBackupTabProps> = ({
 
             const isColl = parts[2]?.toUpperCase() === "TRUE" || parts[2] === "1"
             if (isColl) {
-              const card = parts[3] ? {
-                id: parts[3],
-                name: parts[4] || "",
-                setName: parts[3].split("-")[0]?.toUpperCase() || "TCG",
-                number: parts[3].split("-")[1] || "1",
-                imageUrl: parts[5] || "",
-              } : null
+              const card = parts[3]
+                ? toTcgCard({
+                    id: parts[3],
+                    name: parts[4] || "",
+                    imageUrl: parts[5] || "",
+                  })
+                : null
 
-              nextCollected[dexId] = { pokemonId: dexId, tcgCard: card }
-              syncEntries.push({
-                pokedexId: dexId,
-                collected: true,
-                cardId: card?.id ?? null,
-                cardName: card?.name ?? null,
-                cardImageUrl: card?.imageUrl ?? null,
-              })
+              const slot = toCollectedSlot(dexId, card)
+              nextCollected[dexId] = slot
+              syncEntries.push(toBatchSyncEntry(dexId, slot))
             }
           }
 
           onUpdateCollection(nextCollected)
           if (userId) {
-            await fetch("/api/collection/batch", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ userId, entries: syncEntries }),
-            }).catch(() => {})
+            await apiClient.batchSyncCollection(userId, syncEntries).catch(() => {})
           }
-
 
           setStatusMessage({
             type: "success",

@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { FileSpreadsheet, FileText, Loader2 } from "lucide-react"
 import { type CollectedSlot } from "@/data/pokemon"
+import { apiClient } from "@/lib/apiClient"
+import { mapCollectionItemsToRecord } from "@/lib/cardMapping"
 import { useTranslation } from "@/i18n"
 
 interface GoogleSheetsTabProps {
@@ -29,29 +31,9 @@ export const GoogleSheetsTab: React.FC<GoogleSheetsTabProps> = ({
 
   const refreshCollectionFromServer = async () => {
     if (!userId) return
-    const colRes = await fetch(`/api/collection?userId=${encodeURIComponent(userId)}`)
-
-    const colData = await colRes.json()
+    const colData = await apiClient.getCollection(userId)
     if (colData.items) {
-      const loaded: Record<number, CollectedSlot> = {}
-      for (const [idStr, item] of Object.entries<any>(colData.items)) {
-        const id = Number(idStr)
-        if (item.collected) {
-          loaded[id] = {
-            pokemonId: id,
-            tcgCard: item.cardId
-              ? {
-                  id: item.cardId,
-                  name: item.cardName || "",
-                  setName: item.cardId.split("-")[0]?.toUpperCase() || "TCG",
-                  number: item.cardId.split("-")[1] || "1",
-                  imageUrl: item.cardImageUrl || "",
-                }
-              : null,
-          }
-        }
-      }
-      onUpdateCollection(loaded)
+      onUpdateCollection(mapCollectionItemsToRecord(colData.items))
     }
   }
 
@@ -69,29 +51,17 @@ export const GoogleSheetsTab: React.FC<GoogleSheetsTabProps> = ({
     setStatusMessage(null)
     const effectiveUserId = userId || "guest"
     try {
-      const res = await fetch("/api/collection/seed-sheet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: effectiveUserId,
-          spreadsheetId,
-          accessToken: sheetToken.trim() || undefined,
-        }),
-      })
+      const data = await apiClient.seedSheet(
+        effectiveUserId,
+        spreadsheetId,
+        sheetToken.trim() || undefined
+      )
 
-      const data = await res.json()
-      if (res.ok && data.success) {
-        await refreshCollectionFromServer()
-        setStatusMessage({
-          type: "success",
-          text: t("backupModal.sheetsSuccess", { count: data.seededCount }),
-        })
-      } else {
-        setStatusMessage({
-          type: "error",
-          text: data.error || t("backupModal.fileImportError", { message: "Error" }),
-        })
-      }
+      await refreshCollectionFromServer()
+      setStatusMessage({
+        type: "success",
+        text: t("backupModal.sheetsSuccess", { count: data.seededCount }),
+      })
     } catch (err: any) {
       setStatusMessage({ type: "error", text: t("backupModal.statusSeedError", { message: err.message }) })
     } finally {
@@ -112,24 +82,13 @@ export const GoogleSheetsTab: React.FC<GoogleSheetsTabProps> = ({
       const lines = pastedRows.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0)
       const rawRows = lines.map((l) => l.split(/[\t,]/).map((p) => p.trim()))
 
-      const res = await fetch("/api/collection/seed-rows", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: effectiveUserId, rows: rawRows }),
+      const data = await apiClient.seedRows(effectiveUserId, rawRows)
+      await refreshCollectionFromServer()
+      setStatusMessage({
+        type: "success",
+        text: t("backupModal.pastedRowsSuccess", { count: data.seededCount }),
       })
-
-
-      const data = await res.json()
-      if (res.ok && data.success) {
-        await refreshCollectionFromServer()
-        setStatusMessage({
-          type: "success",
-          text: t("backupModal.pastedRowsSuccess", { count: data.seededCount }),
-        })
-        setPastedRows("")
-      } else {
-        setStatusMessage({ type: "error", text: data.error || t("backupModal.fileImportError", { message: "Error" }) })
-      }
+      setPastedRows("")
     } catch (err: any) {
       setStatusMessage({ type: "error", text: t("backupModal.statusSeedError", { message: err.message }) })
     } finally {

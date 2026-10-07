@@ -8,6 +8,7 @@ import { ScrapeExpansionModal } from "./ScrapeExpansionModal"
 import { HiddenExpansionsTray } from "./HiddenExpansionsTray"
 import { InvestorFilterBar } from "./InvestorFilterBar"
 import { useTranslation } from "@/i18n"
+import { apiClient } from "@/lib/apiClient"
 import type { Expansion } from "../../../shared/types.js"
 
 export interface TcgInvestorDashboardProps {
@@ -53,19 +54,15 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
       }
 
       try {
-        const userQuery = userId ? `?userId=${encodeURIComponent(userId)}` : ""
-        const res = await fetch(`/api/collector/preferences${userQuery}`)
-        if (res.ok) {
-          const data = await res.json()
-          if (data.preferences) {
-            const pref = data.preferences
-            const finalRarity = pref.targetRarity || localRarity
-            const finalHidden = pref.hiddenExpansions?.length ? pref.hiddenExpansions : localHidden
-            setRarity(finalRarity)
-            setHiddenExpansions(finalHidden)
-            setPreferencesLoaded(true)
-            return
-          }
+        const data = await apiClient.getCollectorPreferences(userId)
+        if (data.preferences) {
+          const pref = data.preferences
+          const finalRarity = pref.targetRarity || localRarity
+          const finalHidden = pref.hiddenExpansions?.length ? pref.hiddenExpansions : localHidden
+          setRarity(finalRarity)
+          setHiddenExpansions(finalHidden)
+          setPreferencesLoaded(true)
+          return
         }
       } catch (err) {
         console.warn("Could not load preferences from API:", err)
@@ -91,23 +88,21 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
       // ignore
     }
 
-    fetch("/api/collector/preferences", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, targetRarity: newRarity }),
-    }).catch((err) => console.warn("Failed to save rarity preference:", err))
+    apiClient
+      .updateCollectorPreferences({ userId, targetRarity: newRarity })
+      .catch((err) => console.warn("Failed to save rarity preference:", err))
   }
 
   // Fetch expansions from backend API with server-side yield & sorting
   const loadExpansions = useCallback(async () => {
     setIsLoading(true)
     try {
-      const userParam = userId ? `&userId=${encodeURIComponent(userId)}` : ""
-      const categoryParam = `&category=${encodeURIComponent(category)}`
-      const url = `/api/tcg/expansions?rarity=${encodeURIComponent(rarity)}&sort=${encodeURIComponent(sortBy)}${categoryParam}${userParam}`
-      const res = await fetch(url)
-      if (!res.ok) throw new Error("Failed to load expansions")
-      const data = await res.json()
+      const data = await apiClient.getExpansions({
+        rarity,
+        sort: sortBy,
+        category,
+        userId,
+      })
       setExpansions(data.expansions || [])
     } catch (err: any) {
       console.error("Error loading expansion catalog:", err)
@@ -143,22 +138,13 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
     setScrapeFeedback(null)
 
     try {
-      const res = await fetch("/api/tcg/expansions/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: scrapeUrl.trim() }),
-      })
-
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || t("investor.scrapeFailed"))
-      }
+      const data = await apiClient.scrapeExpansion(scrapeUrl.trim())
 
       setScrapeFeedback({
         type: "success",
         message: t("investor.scrapeSuccess", {
           count: data.secretCount || 0,
-          score: data.metrics?.investmentScore || 0,
+          score: (data as any).metrics?.investmentScore || 0,
         }),
       })
       // Reload catalog to refresh rankings
@@ -195,11 +181,9 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
       // ignore
     }
 
-    fetch("/api/collector/preferences", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, hiddenExpansions: nextHidden }),
-    }).catch((err) => console.warn("Failed to save hidden expansions preference:", err))
+    apiClient
+      .updateCollectorPreferences({ userId, hiddenExpansions: nextHidden })
+      .catch((err) => console.warn("Failed to save hidden expansions preference:", err))
   }
 
   // Unhide all expansions
@@ -214,11 +198,9 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
       // ignore
     }
 
-    fetch("/api/collector/preferences", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, hiddenExpansions: [] }),
-    }).catch((err) => console.warn("Failed to reset hidden expansions:", err))
+    apiClient
+      .updateCollectorPreferences({ userId, hiddenExpansions: [] })
+      .catch((err) => console.warn("Failed to reset hidden expansions:", err))
   }
 
   // Client search query filter with search bypass for hidden items

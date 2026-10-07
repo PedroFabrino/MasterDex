@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { type CollectorProfile } from "@/components/auth/AuthModal"
+import { apiClient } from "@/lib/apiClient"
 
 declare global {
   interface Window {
@@ -50,24 +51,8 @@ export function useGoogleAuth(options: UseGoogleAuthOptions = {}) {
       const timeoutId = setTimeout(() => controller.abort(), 15000)
 
       try {
-        const res = await fetch("/api/auth/google", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ credential: response.credential }),
-          signal: controller.signal,
-        })
+        const data = await apiClient.loginWithGoogle(response.credential, controller.signal)
         clearTimeout(timeoutId)
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}))
-          throw new Error(errData.error || `Authentication failed (${res.status})`)
-        }
-
-        const data = (await res.json()) as {
-          profile: CollectorProfile
-          seeded: boolean
-          seededCount: number
-        }
 
         optionsRef.current.onLoginSuccess?.(data.profile, {
           seeded: data.seeded,

@@ -18,6 +18,8 @@ import {
   Loader2,
 } from "lucide-react"
 import { type CollectedSlot } from "@/data/pokemon"
+import { apiClient } from "@/lib/apiClient"
+import { mapCollectionItemsToRecord } from "@/lib/cardMapping"
 import { FileBackupTab } from "./import/FileBackupTab"
 import { GoogleSheetsTab } from "./import/GoogleSheetsTab"
 import { useTranslation } from "@/i18n"
@@ -47,31 +49,13 @@ export const ImportBackupModal: React.FC<ImportBackupModalProps> = ({
     setLoading(true)
     setStatusMessage(null)
     try {
-      const res = await fetch(`/api/collection?userId=pedro`)
-      const data = await res.json()
-      if (res.ok && data.items) {
-        const loaded: Record<number, CollectedSlot> = {}
-        for (const [idStr, item] of Object.entries<any>(data.items)) {
-          const id = Number(idStr)
-          if (item.collected) {
-            loaded[id] = {
-              pokemonId: id,
-              tcgCard: item.cardId
-                ? {
-                    id: item.cardId,
-                    name: item.cardName || "",
-                    setName: item.cardId.split("-")[0]?.toUpperCase() || "TCG",
-                    number: item.cardId.split("-")[1] || "1",
-                    imageUrl: item.cardImageUrl || "",
-                  }
-                : null,
-            }
-          }
-        }
+      const data = await apiClient.getCollection("pedro")
+      if (data?.items) {
+        const loaded = mapCollectionItemsToRecord(data.items)
         onUpdateCollection(loaded)
         setStatusMessage({
           type: "success",
-          text: t("backupModal.statusSeedSuccess", { count: data.count }),
+          text: t("backupModal.statusSeedSuccess", { count: data.totalCount || Object.keys(loaded).length }),
         })
       } else {
         setStatusMessage({ type: "error", text: t("backupModal.statusNoCollection") })
