@@ -5,7 +5,10 @@ export const healthRoutes = new Hono()
 
 healthRoutes.get('/health', async (c) => {
   try {
-    await rawClient.execute('SELECT 1;')
+    const pingTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Database ping timed out (3s)')), 3000)
+    )
+    await Promise.race([rawClient.execute('SELECT 1;'), pingTimeout])
     return c.json({
       status: 'ok',
       db: 'connected',
@@ -14,11 +17,11 @@ healthRoutes.get('/health', async (c) => {
   } catch (error: any) {
     return c.json(
       {
-        status: 'error',
+        status: 'degraded',
         db: 'disconnected',
         message: error?.message || 'Database check failed',
       },
-      500
+      503
     )
   }
 })

@@ -1,8 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
 import app from '../server/app.js'
 import { collectorRepository } from '../server/repositories/collectorRepository.js'
+import { ensureDatabaseTables } from '../server/db/index.js'
 
 describe('Collector Preferences Seam (Ticket #16)', () => {
+  beforeAll(async () => {
+    await ensureDatabaseTables()
+  })
+
   const testUserId = `test-pref-${Date.now()}`
 
   beforeEach(async () => {

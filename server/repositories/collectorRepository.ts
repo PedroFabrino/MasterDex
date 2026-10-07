@@ -165,22 +165,25 @@ export class CollectorRepository {
     const existingMap = new Map(existing.map((e) => [e.pokedexId, e]))
     const now = new Date()
 
+    const toInsert: Array<any> = []
+    const toUpdate: Array<{ id: string; values: any }> = []
+
     for (const entry of entries) {
       const match = existingMap.get(entry.pokedexId)
       if (match) {
-        await db
-          .update(userPokemon)
-          .set({
+        toUpdate.push({
+          id: match.id,
+          values: {
             collected: entry.collected,
             cardId: entry.cardId !== undefined ? entry.cardId : match.cardId,
             cardName: entry.cardName !== undefined ? entry.cardName : match.cardName,
             cardImageUrl: entry.cardImageUrl !== undefined ? entry.cardImageUrl : match.cardImageUrl,
             cardLanguage: entry.cardLanguage !== undefined ? entry.cardLanguage : (match.cardLanguage ?? 'en'),
             updatedAt: now,
-          })
-          .where(eq(userPokemon.id, match.id))
+          },
+        })
       } else {
-        await db.insert(userPokemon).values({
+        toInsert.push({
           id: crypto.randomUUID(),
           userId,
           pokedexId: entry.pokedexId,
@@ -192,6 +195,16 @@ export class CollectorRepository {
           updatedAt: now,
         })
       }
+    }
+
+    const CHUNK_SIZE = 50
+    for (let i = 0; i < toInsert.length; i += CHUNK_SIZE) {
+      const chunk = toInsert.slice(i, i + CHUNK_SIZE)
+      await db.insert(userPokemon).values(chunk)
+    }
+
+    for (const item of toUpdate) {
+      await db.update(userPokemon).set(item.values).where(eq(userPokemon.id, item.id))
     }
   }
 

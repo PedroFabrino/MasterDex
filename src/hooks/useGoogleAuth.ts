@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { type CollectorProfile } from "@/components/auth/AuthModal"
 
 declare global {
@@ -18,6 +18,7 @@ declare global {
 
 export const GOOGLE_CLIENT_ID =
   import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID ||
+  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
   "8010736190-ni98j51d06uo3n48kp31ia5atbk9iln5.apps.googleusercontent.com"
 
 export interface UseGoogleAuthOptions {
@@ -30,23 +31,32 @@ export function useGoogleAuth(options: UseGoogleAuthOptions = {}) {
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
 
+  const optionsRef = useRef(options)
+  optionsRef.current = options
+  const initializedRef = useRef(false)
+
   const handleCredentialResponse = useCallback(
     async (response: { credential?: string }) => {
       if (!response.credential) {
         setAuthError("No credential returned by Google")
-        options.onError?.("No credential returned by Google")
+        optionsRef.current.onError?.("No credential returned by Google")
         return
       }
 
       setIsAuthenticating(true)
       setAuthError(null)
 
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
+
       try {
         const res = await fetch("/api/auth/google", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ credential: response.credential }),
+          signal: controller.signal,
         })
+        clearTimeout(timeoutId)
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}))
@@ -59,19 +69,23 @@ export function useGoogleAuth(options: UseGoogleAuthOptions = {}) {
           seededCount: number
         }
 
-        options.onLoginSuccess?.(data.profile, {
+        optionsRef.current.onLoginSuccess?.(data.profile, {
           seeded: data.seeded,
           seededCount: data.seededCount,
         })
       } catch (err: any) {
-        const msg = err.message || "Failed to authenticate with Google"
+        clearTimeout(timeoutId)
+        const msg =
+          err?.name === "AbortError"
+            ? "Tempo limite esgotado ao autenticar. Tente novamente."
+            : err?.message || "Failed to authenticate with Google"
         setAuthError(msg)
-        options.onError?.(msg)
+        optionsRef.current.onError?.(msg)
       } finally {
         setIsAuthenticating(false)
       }
     },
-    [options]
+    []
   )
 
   useEffect(() => {
@@ -79,17 +93,26 @@ export function useGoogleAuth(options: UseGoogleAuthOptions = {}) {
 
     const checkAndInit = () => {
       if (typeof window !== "undefined" && window.google?.accounts?.id) {
-        try {
-          window.google.accounts.id.initialize({
-            client_id: GOOGLE_CLIENT_ID,
-            callback: handleCredentialResponse,
-            auto_select: false,
-            cancel_on_tap_outside: true,
-          })
+        if (!initializedRef.current) {
+          try {
+            window.google.accounts.id.initialize({
+              client_id: GOOGLE_CLIENT_ID,
+              callback: handleCredentialResponse,
+              auto_select: false,
+              cancel_on_tap_outside: true,
+            })
+            initializedRef.current = true
+            setIsGsiLoaded(true)
+            if (interval) clearInterval(interval)
+            return true
+          } catch (e) {
+            console.error("[GIS] Init failed:", e)
+          }
+        } else {
           setIsGsiLoaded(true)
           if (interval) clearInterval(interval)
           return true
-        } catch {}
+        }
       }
       return false
     }

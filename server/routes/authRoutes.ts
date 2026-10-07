@@ -46,6 +46,7 @@ authRoutes.post('/google', async (c) => {
 
       const expectedClientId =
         process.env.VITE_GOOGLE_OAUTH_CLIENT_ID ||
+        process.env.VITE_GOOGLE_CLIENT_ID ||
         process.env.GOOGLE_CLIENT_ID ||
         '8010736190-ni98j51d06uo3n48kp31ia5atbk9iln5.apps.googleusercontent.com'
 
