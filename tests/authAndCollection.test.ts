@@ -3,6 +3,8 @@ import { sheetSeedService } from '../server/services/sheetSeedService.js'
 import { collectorRepository } from '../server/repositories/collectorRepository.js'
 import { ensureDatabaseTables } from '../server/db/index.js'
 import { app } from '../server/app.js'
+import { createSessionToken } from '../server/services/authService.js'
+
 
 describe('SheetSeedService parsing logic', () => {
   it('parses pokedex numbers with leading hashes or padding', () => {
@@ -43,20 +45,38 @@ describe('Auth & Collection API Integration', () => {
   }
 
   let createdUserId = ''
+  let sessionToken = ''
 
-  it('creates collector profile via POST /api/auth/google', async () => {
+  it('rejects POST /api/auth/google when credential token is missing', async () => {
     const res = await app.request('/api/auth/google', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(testUser),
     })
 
+    expect(res.status).toBe(400)
+    const body = (await res.json()) as any
+    expect(body.error).toBe('Invalid Google payload')
+  })
+
+  it('creates collector profile via POST /api/auth/google with valid credential', async () => {
+    const res = await app.request('/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        credential: `test-token:${testUser.googleId}:${testUser.email}:${testUser.name}:${testUser.avatarUrl}`,
+      }),
+    })
+
     expect(res.status).toBe(200)
     const body = (await res.json()) as any
     expect(body.profile).toBeDefined()
     expect(body.profile.email).toBe(testUser.email)
+    expect(body.sessionToken).toBeDefined()
     createdUserId = body.profile.id
+    sessionToken = body.sessionToken
   })
+
 
   it('seeds collection from rows via POST /api/collection/seed-rows', async () => {
     const rows = [
@@ -246,5 +266,43 @@ describe('Auth & Collection API Integration', () => {
 
       global.fetch = originalFetch
     })
+
+    it('rejects collection mutation when session token belongs to another user (IDOR prevention)', async () => {
+      const userAToken = createSessionToken('user-a')
+      const res = await app.request('/api/collection/25', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${userAToken}`,
+        },
+        body: JSON.stringify({
+          userId: 'pedro',
+          collected: true,
+        }),
+      })
+
+      expect(res.status).toBe(403)
+      const data = (await res.json()) as any
+      expect(data.error).toContain('Forbidden: profile ownership mismatch')
+    })
+
+    it('rejects collection mutation when session token is invalid', async () => {
+      const res = await app.request('/api/collection/25', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer invalid.fake.token',
+        },
+        body: JSON.stringify({
+          userId: 'pedro',
+          collected: true,
+        }),
+      })
+
+      expect(res.status).toBe(401)
+      const data = (await res.json()) as any
+      expect(data.error).toContain('Unauthorized: invalid or expired session token')
+    })
   })
 })
+

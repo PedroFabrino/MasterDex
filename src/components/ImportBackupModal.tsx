@@ -35,8 +35,9 @@ export const ImportBackupModal: React.FC<ImportBackupModalProps> = ({
   onClose,
   collected,
   onUpdateCollection,
-  userId = "pedro",
+  userId,
 }) => {
+
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<string>("file")
   const [loading, setLoading] = useState(false)

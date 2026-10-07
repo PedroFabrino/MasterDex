@@ -171,3 +171,21 @@ _Avoid_: Translation JSON, string dump, hardcoded labels
 The active linguistic context (pt-BR or en-US) governing all rendered user interface copy, persisted in collector preferences.
 _Avoid_: Current language, language setting
 
+### Sharing & Public Presentation
+
+**Shared Binder**:
+The public, read-only presentation of a Collector Profile's Binder Slots accessible to external visitors.
+_Avoid_: Shared collection, public dex, published cards
+
+**Public Binder View**:
+The dedicated read-only interface rendering a Shared Binder for visitors, featuring collector attribution and card inspection without mutation controls.
+_Avoid_: Viewer mode, spectator screen, read-only dex
+
+**Public Share Link**:
+The persistent web URL associated with a Collector Profile providing direct access to their Shared Binder when public sharing is enabled.
+_Avoid_: Shared URL, binder invite, friend link
+
+**Sharing State**:
+The collector-configured binary setting (Enabled or Disabled) governing whether external visitors can access the collector's Shared Binder.
+_Avoid_: Privacy switch, public flag, visibility mode
+

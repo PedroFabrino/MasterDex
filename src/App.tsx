@@ -241,8 +241,9 @@ export function App() {
 
           {/* Active Mode View */}
           {appMode === "investor" ? (
-            <TcgInvestorDashboard userId={currentUser?.id || "pedro"} />
+            <TcgInvestorDashboard userId={currentUser?.id} />
           ) : (
+
             <main className="max-w-5xl mx-auto px-4 py-6">
               {/* Binder Search Bar Toolbar */}
               <div className="mb-4">
@@ -295,8 +296,9 @@ export function App() {
         onClose={() => setImportModalOpen(false)}
         collected={collected}
         onUpdateCollection={setCollected}
-        userId={currentUser?.id || "pedro"}
+        userId={currentUser?.id}
       />
+
 
       <AuthModal
         open={authModalOpen}

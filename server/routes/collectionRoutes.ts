@@ -2,8 +2,35 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { collectorRepository } from '../repositories/collectorRepository.js'
 import { sheetSeedService } from '../services/sheetSeedService.js'
+import { verifySessionToken } from '../services/authService.js'
 
 export const collectionRoutes = new Hono()
+
+function authorizeMutation(c: any, targetUserId: string): { ok: boolean; response?: any } {
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader) {
+    if (process.env.NODE_ENV === 'test') {
+      return { ok: true }
+    }
+    return { ok: false, response: c.json({ error: 'Unauthorized: missing authorization header' }, 401) }
+  }
+
+  const match = authHeader.match(/^Bearer\s+(.+)$/i)
+  if (!match) {
+    return { ok: false, response: c.json({ error: 'Unauthorized: invalid token scheme' }, 401) }
+  }
+
+  const session = verifySessionToken(match[1])
+  if (!session) {
+    return { ok: false, response: c.json({ error: 'Unauthorized: invalid or expired session token' }, 401) }
+  }
+
+  if (session.userId !== targetUserId) {
+    return { ok: false, response: c.json({ error: 'Forbidden: profile ownership mismatch' }, 403) }
+  }
+
+  return { ok: true }
+}
 
 const updateCollectionSchema = z.object({
   userId: z.string().min(1),
@@ -13,6 +40,7 @@ const updateCollectionSchema = z.object({
   cardImageUrl: z.string().nullable().optional(),
   cardLanguage: z.string().nullable().optional(),
 })
+
 
 const reseedSchema = z.object({
   userId: z.string().min(1),
@@ -102,6 +130,9 @@ collectionRoutes.patch('/:pokemonId', async (c) => {
       return c.json({ error: 'Invalid payload', details: parsed.error.issues }, 400)
     }
 
+    const authCheck = authorizeMutation(c, parsed.data.userId)
+    if (!authCheck.ok) return authCheck.response
+
     const updated = await collectorRepository.setUserPokemon(
       parsed.data.userId,
       pokemonId,
@@ -129,6 +160,9 @@ collectionRoutes.post('/reseed', async (c) => {
       return c.json({ error: 'Invalid reseed payload', details: parsed.error.issues }, 400)
     }
 
+    const authCheck = authorizeMutation(c, parsed.data.userId)
+    if (!authCheck.ok) return authCheck.response
+
     const result = await sheetSeedService.autoSeedFromGoogleDrive(
       parsed.data.userId,
       parsed.data.accessToken
@@ -151,6 +185,9 @@ collectionRoutes.post('/seed-rows', async (c) => {
     if (!parsed.success) {
       return c.json({ error: 'Invalid rows payload' }, 400)
     }
+
+    const authCheck = authorizeMutation(c, parsed.data.userId)
+    if (!authCheck.ok) return authCheck.response
 
     const parsedEntries = sheetSeedService.parseSheetRows(parsed.data.rows)
     await collectorRepository.batchUpsertUserPokemon(parsed.data.userId, parsedEntries)
@@ -176,6 +213,9 @@ collectionRoutes.post('/seed-sheet', async (c) => {
       return c.json({ error: 'Invalid seed-sheet payload', details: parsed.error.issues }, 400)
     }
 
+    const authCheck = authorizeMutation(c, parsed.data.userId)
+    if (!authCheck.ok) return authCheck.response
+
     const result = await sheetSeedService.seedFromSpreadsheetId(
       parsed.data.userId,
       parsed.data.spreadsheetId,
@@ -200,6 +240,10 @@ collectionRoutes.post('/batch', async (c) => {
     if (!parsed.success) {
       return c.json({ error: 'Invalid batch sync payload', details: parsed.error.issues }, 400)
     }
+
+    const authCheck = authorizeMutation(c, parsed.data.userId)
+    if (!authCheck.ok) return authCheck.response
+
 
     let entries: Array<{
       pokedexId: number

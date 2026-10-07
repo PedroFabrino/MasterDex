@@ -5,13 +5,14 @@ import { POKEMON, type CollectedSlot } from "@/data/pokemon"
 import { useTranslation } from "@/i18n"
 
 interface FileBackupTabProps {
-  userId: string
+  userId?: string | null
   collected: Record<number, CollectedSlot>
   onUpdateCollection: (newCollected: Record<number, CollectedSlot>) => void
   setLoading: (loading: boolean) => void
   loading: boolean
   setStatusMessage: (msg: { type: "success" | "error"; text: string } | null) => void
 }
+
 
 export const FileBackupTab: React.FC<FileBackupTabProps> = ({
   userId,
@@ -113,11 +114,14 @@ export const FileBackupTab: React.FC<FileBackupTabProps> = ({
           }
 
           onUpdateCollection(nextCollected)
-          await fetch("/api/collection/batch", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId, entries: syncEntries }),
-          }).catch(() => {})
+          if (userId) {
+            await fetch("/api/collection/batch", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId, entries: syncEntries }),
+            }).catch(() => {})
+          }
+
 
           setStatusMessage({
             type: "success",
@@ -162,11 +166,14 @@ export const FileBackupTab: React.FC<FileBackupTabProps> = ({
           }
 
           onUpdateCollection(nextCollected)
-          await fetch("/api/collection/batch", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId, entries: syncEntries }),
-          }).catch(() => {})
+          if (userId) {
+            await fetch("/api/collection/batch", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId, entries: syncEntries }),
+            }).catch(() => {})
+          }
+
 
           setStatusMessage({
             type: "success",
