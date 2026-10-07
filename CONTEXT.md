@@ -105,6 +105,26 @@ _Avoid_: Rating, set rank, ROI score
 The estimated secondary market monetary value of an individual card denominated in Brazilian Real (BRL / R$).
 _Avoid_: Retail price, MSRP, card cost
 
+**Pricing Provider**:
+An external market quotation source (specifically LigaPokémon, TCGdex / TCGplayer, or TCGCSV) providing secondary market card valuations.
+_Avoid_: Price API, scraper source, market website
+
+**Native Quotation**:
+The raw numeric market price captured from a Pricing Provider in its original currency (BRL for LigaPokémon, USD for TCGplayer, EUR for Cardmarket).
+_Avoid_: Raw price, foreign cost, unadjusted price
+
+**Canonical Market Price**:
+The resolved reference price (standardized in BRL) selected according to the collector's Valuation Preference to calculate set Investment Scores, Chase Card rankings, and Portfolio Worth.
+_Avoid_: Master price, official price, single price
+
+**Valuation Preference**:
+The collector-configured priority setting (e.g., Brazilian Market / LigaPokémon vs. Global Market / TCGplayer) governing which Pricing Provider acts as the primary source for leaderboard sorting and portfolio aggregation.
+_Avoid_: Price setting, market mode, currency option
+
+**Binder Portfolio Value**:
+The cumulative monetary worth of all physical cards represented by Assigned Card Artworks across the collector's owned Binder Slots.
+_Avoid_: Binder value, collection worth, dex net worth
+
 **Price History**:
 A chronological series of recorded market prices for a card used to analyze investment value appreciation or decline over time.
 _Avoid_: Price log, trend history
