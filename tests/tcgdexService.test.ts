@@ -120,6 +120,14 @@ describe('TcgDexService search and caching', () => {
     expect(res2.length).toBeGreaterThan(0)
     expect(res2[0].id).toBe('mep-023')
   })
+
+  it('locates cards with alphanumeric collector numbers and gallery subsets like Zacian GG48/70', async () => {
+    const res = await tcgdexService.searchCards('Zacian GG48/70', 5)
+    expect(res.length).toBeGreaterThan(0)
+    expect(res[0].id).toBe('swsh12.5gg-GG48')
+    expect(res[0].localId).toBe('GG48')
+    expect(res[0].imageUrl).toContain('pokemontcgapi.com')
+  })
 })
 
 describe('TCG Cards Search API route', () => {

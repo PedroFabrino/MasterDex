@@ -34,8 +34,8 @@ export function parseTcgQuery(rawQuery: string): ParsedTcgQuery {
     .replace(/\s+/g, ' ')
     .trim()
 
-  // Pattern 1: Trailing number or fraction, e.g., "Mew ex 129/103", "Charizard 4", "Charizard 023"
-  const trailingMatch = normalized.match(/^(.*?)\s+(\d+)(?:\/(\d+))?$/i)
+  // Pattern 1: Trailing number or fraction, e.g., "Mew ex 129/103", "Charizard 4", "Zacian GG48/70", "Zacian GG48"
+  const trailingMatch = normalized.match(/^(.*?)\s+([a-z]{1,4}\d+|\d+[a-z]?)(?:\/(?:[a-z]{0,4})?(\d+))?$/i)
   if (trailingMatch) {
     const name = trailingMatch[1].trim()
     const localId = trailingMatch[2]
@@ -45,8 +45,8 @@ export function parseTcgQuery(rawQuery: string): ParsedTcgQuery {
     }
   }
 
-  // Pattern 2: Leading fraction/number, e.g., "129/103 Mew", "4 Charizard", "023 Charizard"
-  const leadingMatch = normalized.match(/^(\d+)(?:\/(\d+))?\s+(.*)$/i)
+  // Pattern 2: Leading fraction/number, e.g., "129/103 Mew", "GG48/70 Zacian", "023 Charizard"
+  const leadingMatch = normalized.match(/^([a-z]{1,4}\d+|\d+[a-z]?)(?:\/(?:[a-z]{0,4})?(\d+))?\s+(.*)$/i)
   if (leadingMatch) {
     const localId = leadingMatch[1]
     const total = leadingMatch[2] ? parseInt(leadingMatch[2], 10) : undefined
@@ -56,8 +56,8 @@ export function parseTcgQuery(rawQuery: string): ParsedTcgQuery {
     }
   }
 
-  // Pattern 3: Standalone number, e.g., "129/103", "129", "023"
-  const onlyNumberMatch = normalized.match(/^(\d+)(?:\/(\d+))?$/)
+  // Pattern 3: Standalone number or code, e.g., "129/103", "GG48/70", "GG48", "023"
+  const onlyNumberMatch = normalized.match(/^([a-z]{1,4}\d+|\d+[a-z]?)(?:\/(?:[a-z]{0,4})?(\d+))?$/i)
   if (onlyNumberMatch) {
     return {
       name: '',

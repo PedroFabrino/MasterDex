@@ -301,8 +301,8 @@ export class TcgDexService {
       // Exact localId matching when a collector number is specified in query
       finalResults = results
       if (parsed.localId) {
-        const targetLocalId = parsed.localId.replace(/^0+/, '')
-        const exactMatches = results.filter((c) => c.localId.replace(/^0+/, '') === targetLocalId)
+        const targetLocalId = parsed.localId.toLowerCase().replace(/^0+/, '')
+        const exactMatches = results.filter((c) => c.localId.toLowerCase().replace(/^0+/, '') === targetLocalId)
         if (exactMatches.length > 0) {
           finalResults = exactMatches
         }
@@ -336,16 +336,18 @@ export class TcgDexService {
     // Lazily enrich paginated cards missing official scans via ptcgAssetService
     const enrichedResults = await Promise.all(
       trimmedResults.map(async (card) => {
-        if ((card as any)._missingScan) {
+        if ((card as any)._missingScan && card.language !== 'ja') {
           const setId = (card.id.split('-')[0] || '').toLowerCase()
-          if (setId === 'mep' || setId.endsWith('p')) {
-            const ptcgAsset = await ptcgAssetService.resolveCardImage(setId, card.localId)
+          const isPromoOrGallery =
+            setId === 'mep' ||
+            setId.endsWith('p') ||
+            setId.endsWith('gg') ||
+            setId.endsWith('tg') ||
+            /^[a-z]{1,4}\d+/i.test(card.localId)
+          if (isPromoOrGallery) {
+            const ptcgAsset = await ptcgAssetService.resolveCardImage(setId, card.localId, card.name)
             if (ptcgAsset) {
-              return {
-                ...card,
-                imageUrl: ptcgAsset.imageUrl,
-                thumbnailUrl: ptcgAsset.thumbnailUrl,
-              }
+              return { ...card, imageUrl: ptcgAsset.imageUrl, thumbnailUrl: ptcgAsset.thumbnailUrl }
             }
           }
         }
