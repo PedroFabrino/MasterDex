@@ -26,3 +26,5 @@ dist-ssr
 *.db-journal
 graphify-out/
 .vercel
+.env
+.env.*

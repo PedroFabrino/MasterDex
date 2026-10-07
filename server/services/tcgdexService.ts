@@ -3,6 +3,7 @@ import type { TcgCardSearchResult } from '../../shared/types.js'
 import { parseTcgQuery, type ParsedTcgQuery } from './tcgQueryParser.js'
 import { tcgdexRarityService } from './tcgdexRarity.js'
 import { investmentService } from './investmentService.js'
+import { ptcgAssetService } from './ptcgAssetService.js'
 
 interface TcgDexBriefCard {
   id: string
@@ -293,7 +294,8 @@ export class TcgDexService {
           thumbnailUrl,
           rarity: rarityInfo.rarity,
           language: card.language || 'en',
-        })
+          ...(!card.image ? { _missingScan: true } : {}),
+        } as TcgCardSearchResult)
       }
 
       // Exact localId matching when a collector number is specified in query
@@ -331,14 +333,34 @@ export class TcgDexService {
 
     const trimmedResults = filteredResults.slice(offset, offset + limit)
 
+    // Lazily enrich paginated cards missing official scans via ptcgAssetService
+    const enrichedResults = await Promise.all(
+      trimmedResults.map(async (card) => {
+        if ((card as any)._missingScan) {
+          const setId = (card.id.split('-')[0] || '').toLowerCase()
+          if (setId === 'mep' || setId.endsWith('p')) {
+            const ptcgAsset = await ptcgAssetService.resolveCardImage(setId, card.localId)
+            if (ptcgAsset) {
+              return {
+                ...card,
+                imageUrl: ptcgAsset.imageUrl,
+                thumbnailUrl: ptcgAsset.thumbnailUrl,
+              }
+            }
+          }
+        }
+        return card
+      })
+    )
+
     // Store in slice cache
     if (this.queryCache.size > 200) {
       const firstKey = this.queryCache.keys().next().value
       if (firstKey) this.queryCache.delete(firstKey)
     }
-    this.queryCache.set(sliceCacheKey, { timestamp: Date.now(), results: trimmedResults })
+    this.queryCache.set(sliceCacheKey, { timestamp: Date.now(), results: enrichedResults })
 
-    return trimmedResults
+    return enrichedResults
   }
 
   async getTotalCount(query: string, dexId?: number, rarity = 'any', lang = 'all'): Promise<number> {
