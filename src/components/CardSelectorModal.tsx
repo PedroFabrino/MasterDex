@@ -38,7 +38,7 @@ export function CardSelectorModal({
   const [query, setQuery] = useState(pokemon?.name ?? "")
   const [debouncedQuery, setDebouncedQuery] = useState(pokemon?.name ?? "")
   const [rarity, setRarity] = useState<string>("any")
-  const [selectedLanguage, setSelectedLanguage] = useState<string>("en")
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("all")
   const [liveCards, setLiveCards] = useState<TcgCard[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -66,6 +66,8 @@ export function CardSelectorModal({
         setSelectedLanguage(slot.cardLanguage)
       } else if (slot?.tcgCard?.language) {
         setSelectedLanguage(slot.tcgCard.language)
+      } else {
+        setSelectedLanguage("all")
       }
     }
   }, [open, slot])
@@ -104,7 +106,8 @@ export function CardSelectorModal({
 
     const dexIdParam = pokemon ? `&dexId=${pokemon.id}` : ""
     const rarityParam = rarity ? `&rarity=${encodeURIComponent(rarity)}` : ""
-    fetch(`/api/tcg/cards/search?q=${encodeURIComponent(debouncedQuery)}${dexIdParam}${rarityParam}&lang=all&limit=24&offset=0`)
+    const langParam = selectedLanguage ? `&lang=${encodeURIComponent(selectedLanguage)}` : "&lang=all"
+    fetch(`/api/tcg/cards/search?q=${encodeURIComponent(debouncedQuery)}${dexIdParam}${rarityParam}${langParam}&limit=24&offset=0`)
       .then((res) => {
         if (!res.ok) throw new Error("Search failed")
         return res.json()
@@ -150,7 +153,7 @@ export function CardSelectorModal({
     return () => {
       cancelled = true
     }
-  }, [debouncedQuery, rarity, open, pokemon])
+  }, [debouncedQuery, rarity, selectedLanguage, open, pokemon])
 
   // Load next batch (lazy loading / pagination)
   const handleLoadMore = useCallback(() => {
@@ -158,9 +161,10 @@ export function CardSelectorModal({
     setIsLoadingMore(true)
     const dexIdParam = `&dexId=${pokemon.id}`
     const rarityParam = rarity ? `&rarity=${encodeURIComponent(rarity)}` : ""
+    const langParam = selectedLanguage ? `&lang=${encodeURIComponent(selectedLanguage)}` : "&lang=all"
     const offset = liveCards.length
     fetch(
-      `/api/tcg/cards/search?q=${encodeURIComponent(debouncedQuery)}${dexIdParam}${rarityParam}&lang=all&limit=24&offset=${offset}`
+      `/api/tcg/cards/search?q=${encodeURIComponent(debouncedQuery)}${dexIdParam}${rarityParam}${langParam}&limit=24&offset=${offset}`
     )
       .then((res) => res.json())
       .then((data) => {
@@ -186,7 +190,7 @@ export function CardSelectorModal({
       })
       .catch(() => setHasMore(false))
       .finally(() => setIsLoadingMore(false))
-  }, [isLoading, isLoadingMore, hasMore, pokemon, debouncedQuery, rarity, liveCards.length])
+  }, [isLoading, isLoadingMore, hasMore, pokemon, debouncedQuery, rarity, selectedLanguage, liveCards.length])
 
   // Lazy loading observer for bottom sentinel
   useEffect(() => {
@@ -212,7 +216,7 @@ export function CardSelectorModal({
 
   const handleCardPick = useCallback(
     (pokemonId: number, card: TcgCard | null) => {
-      const chosenLang = card?.language || selectedLanguage
+      const chosenLang = card?.language || (selectedLanguage !== "all" ? selectedLanguage : "en")
       onSelectCard(pokemonId, card, card ? chosenLang : undefined)
       onClose()
     },

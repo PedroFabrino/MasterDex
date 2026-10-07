@@ -60,6 +60,7 @@ export const pt: TranslationDictionary = {
     rarityBypassedHint: 'Busca por código ativa — todas as raridades exibidas',
     printLanguageLabel: 'Idioma da Carta',
     otherLanguages: 'Outro...',
+    langAll: 'Todos',
     langPt: 'Português (PT)',
     langEn: 'Inglês (EN)',
     langJa: 'Japonês (JA)',

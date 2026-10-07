@@ -60,6 +60,7 @@ export interface TranslationDictionary {
     rarityBypassedHint: string
     printLanguageLabel: string
     otherLanguages: string
+    langAll: string
     langPt: string
     langEn: string
     langJa: string

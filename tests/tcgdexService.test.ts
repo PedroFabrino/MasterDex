@@ -192,6 +192,36 @@ describe('TCG Cards Search API route', () => {
     }
   })
 
+  it('accurately resolves Japanese Pokémon species scans and secret card totals without 404s', async () => {
+    // Search Japanese cards for Venusaur (dexId 3)
+    const res = await app.request('/api/tcg/cards/search?q=Venusaur&dexId=3&lang=ja&limit=10')
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as any
+    expect(body.results.length).toBeGreaterThan(0)
+
+    // All results must be authentic Japanese Venusaur cards
+    for (const card of body.results) {
+      expect(card.language).toBe('ja')
+      expect(card.imageUrl).toMatch(/\.(webp|png)$/)
+      expect(card.thumbnailUrl).toMatch(/\.(webp|png)$/)
+      // Must NOT return unrelated Pokémon like Aerodactyl or Reshiram
+      expect(card.name).not.toContain('プテラ') // Aerodactyl
+      expect(card.name).not.toContain('レシラム') // Reshiram
+    }
+
+    // Verify sv2a set metadata in setsMap
+    const setsMap = await tcgdexService.getSetsMap()
+    const sv2aMeta = setsMap.get('sv2a')
+    expect(sv2aMeta).toBeDefined()
+    expect(sv2aMeta?.total).toBe(165)
+
+    // Verify SV2a-200 SAR gets Secret Rare tier 4
+    const sar = body.results.find((c: any) => c.id.toLowerCase() === 'sv2a-200')
+    if (sar) {
+      expect(sar.rarity).toBe('Secret Rare')
+    }
+  })
+
   it('keeps tcgdexService and CardPrintLanguageSelector within architectural line limits (<= 400)', async () => {
     const fs = await import('node:fs')
     const servicePath = new URL('../server/services/tcgdexService.ts', import.meta.url)

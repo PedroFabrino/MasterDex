@@ -15,7 +15,7 @@ export interface CardPrintLanguageSelectorProps {
   onSelectLanguage: (lang: string) => void
 }
 
-const PRIMARY_LANGUAGES = ["pt", "en", "ja"] as const
+const PRIMARY_LANGUAGES = ["all", "pt", "en", "ja"] as const
 
 const OTHER_LANGUAGES = [
   { code: "ko", labelKey: "cardSelector.langKo" },
@@ -32,7 +32,7 @@ export function CardPrintLanguageSelector({
   onSelectLanguage,
 }: CardPrintLanguageSelectorProps) {
   const { t } = useTranslation()
-  const isOther = !PRIMARY_LANGUAGES.includes(selectedLanguage as any)
+  const isOther = !PRIMARY_LANGUAGES.includes(selectedLanguage.toLowerCase() as any)
 
   return (
     <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
@@ -59,7 +59,7 @@ export function CardPrintLanguageSelector({
                   : "border-zinc-700 bg-zinc-800/40 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
               )}
             >
-              {lang}
+              {lang === "all" ? t("cardSelector.langAll") : lang}
             </Button>
           )
         })}

@@ -60,6 +60,7 @@ export const en: TranslationDictionary = {
     rarityBypassedHint: 'Code search active — all rarities shown',
     printLanguageLabel: 'Print Language',
     otherLanguages: 'Other...',
+    langAll: 'All',
     langPt: 'Portuguese (PT)',
     langEn: 'English (EN)',
     langJa: 'Japanese (JA)',
