@@ -13,9 +13,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { tcgdexService } from '../services/tcgdexService.js'
-import { collectorRepository } from './collectorRepository.js'
-import { investmentService } from '../services/investmentService.js'
-import type { ExpansionCategory } from '../../shared/types.js'
 
 export function formatTcgdexImageUrl(url?: string | null, ext = 'png'): string | null {
   if (!url) return null
@@ -33,8 +30,11 @@ function loadBaselineCards(): { all: CardRecord[]; byExp: Map<string, CardRecord
   }
 
   try {
-    const filePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../src/data/tcgdexSetCards.json')
+    const serverPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../data/tcgdexSetCards.json')
+    const fallbackPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../src/data/tcgdexSetCards.json')
+    const filePath = fs.existsSync(serverPath) ? serverPath : fallbackPath
     if (fs.existsSync(filePath)) {
+
       const raw = fs.readFileSync(filePath, 'utf-8')
       const items = JSON.parse(raw) as CardRecord[]
       baselineCardsCache = items
@@ -257,13 +257,10 @@ export class ExpansionsRepository {
     return await db.select().from(cards).where(inArray(cards.id, cardIds))
   }
 
-  async getExpansionsWithYield(options: {
-    userId?: string
-    rarity?: string
-    sort?: string
-    category?: string
-  }): Promise<Array<ExpansionRecord & { collectionGapYield: number; category: ExpansionCategory }>> {
-    const allExpansions = await this.getAllExpansions()
+  async getCardsGroupedByExpansion(): Promise<{
+    allCards: CardRecord[]
+    cardsByExp: Map<string, CardRecord[]>
+  }> {
     const { all: baseline, byExp: baselineByExp } = loadBaselineCards()
     const dbCards = await db.select().from(cards)
 
@@ -278,66 +275,17 @@ export class ExpansionsRepository {
       }
     }
 
-    // Filter by expansion category ('booster' | 'promo' | 'all', default: 'booster')
-    const requestedCategory = (options.category || 'booster').toLowerCase()
-    const filteredExpansions = allExpansions.filter((exp) => {
-      if (requestedCategory === 'all') return true
-      const cat = investmentService.classifyExpansionCategory(exp.id, exp.name)
-      return cat === requestedCategory
-    })
-
-    // Map user owned pokemon to their highest rarity tier
-    const userOwnedRarityMap = new Map<number, number>()
-    if (options.userId) {
-      const cardsById = new Map<string, CardRecord>()
-      for (const card of baseline) {
-        cardsById.set(card.id, card)
-      }
-      for (const card of dbCards) {
-        cardsById.set(card.id, card)
-      }
-
-      const userCollection = await collectorRepository.getUserCollection(options.userId)
-      for (const item of userCollection) {
-        if (!item.collected) continue
-
-        let ownedTier = 0 // default sprite tier
-        if (item.cardId) {
-          const card = cardsById.get(item.cardId)
-          if (card) {
-            ownedTier = investmentService.getRarityTier(card.rarity, card.isSecret)
-          } else {
-            ownedTier = 1
-          }
-        }
-
-        const existingTier = userOwnedRarityMap.get(item.pokedexId) ?? -1
-        if (ownedTier > existingTier) {
-          userOwnedRarityMap.set(item.pokedexId, ownedTier)
-        }
-      }
+    const map = new Map<string, CardRecord>()
+    for (const c of baseline) {
+      map.set(c.id, c)
+    }
+    for (const c of dbCards) {
+      map.set(c.id, c)
     }
 
-    const rarityFilter = options.rarity || 'any'
-    const enriched = filteredExpansions.map((exp) => {
-      const expCards = cardsByExp.get(exp.id) || []
-      const collectionGapYield = investmentService.calculateCollectionGapYield(
-        expCards,
-        userOwnedRarityMap,
-        rarityFilter
-      )
-      const category = investmentService.classifyExpansionCategory(exp.id, exp.name)
-
-      return {
-        ...exp,
-        collectionGapYield,
-        category,
-      }
-    })
-
-    const sortBy = options.sort || 'score'
-    return investmentService.sortExpansions(enriched, sortBy)
+    return { allCards: Array.from(map.values()), cardsByExp }
   }
+
 
   async recordPriceHistory(
     cardId: string,

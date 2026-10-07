@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm'
-import { db } from '../db/index.js'
+import { db, rawClient } from '../db/index.js'
 import {
   collectorProfiles,
   userPokemon,
@@ -8,6 +8,14 @@ import {
 } from '../db/schema.js'
 
 export class CollectorRepository {
+  async pingDatabase(timeoutMs = 3000): Promise<boolean> {
+    const pingTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Database ping timed out (${timeoutMs}ms)`)), timeoutMs)
+    )
+    await Promise.race([rawClient.execute('SELECT 1;'), pingTimeout])
+    return true
+  }
+
   async getProfileByGoogleId(googleId: string): Promise<CollectorProfileRecord | undefined> {
     const rows = await db
       .select()

@@ -14,9 +14,12 @@ export class TcgDexRarityService {
   private ensureMetadataLoaded() {
     if (this.metadataLoaded) return
     try {
+      const serverDataPath = new URL('../data/tcgdexSetCards.json', import.meta.url)
       const fallbackPath = new URL('../../src/data/tcgdexSetCards.json', import.meta.url)
-      if (fs.existsSync(fallbackPath)) {
-        const raw = fs.readFileSync(fallbackPath, 'utf-8')
+      const targetPath = fs.existsSync(serverDataPath) ? serverDataPath : fallbackPath
+      if (fs.existsSync(targetPath)) {
+        const raw = fs.readFileSync(targetPath, 'utf-8')
+
         const cards = JSON.parse(raw) as Array<{ id: string; rarity?: string; isSecret?: boolean }>
         for (const c of cards) {
           if (c.id) {

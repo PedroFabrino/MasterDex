@@ -5,7 +5,8 @@ import { investmentService } from '../services/investmentService.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const setsPath = path.resolve(__dirname, '../../src/data/tcgdexSets.json')
-const outputPath = path.resolve(__dirname, '../../src/data/tcgdexSetCards.json')
+const outputPath = path.resolve(__dirname, '../data/tcgdexSetCards.json')
+
 
 export interface CompactCard {
   id: string

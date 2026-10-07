@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { scraperService } from '../services/scraperService.js'
 import { tcgdexService } from '../services/tcgdexService.js'
 import { expansionsRepository } from '../repositories/expansionsRepository.js'
+import { investmentService } from '../services/investmentService.js'
+
 
 export const tcgRoutes = new Hono()
 
@@ -60,12 +62,13 @@ tcgRoutes.get('/expansions', async (c) => {
     const category = c.req.query('category') || 'booster'
     const userId = c.req.query('userId') || undefined
 
-    const list = await expansionsRepository.getExpansionsWithYield({
+    const list = await investmentService.getExpansionsWithYield({
       rarity,
       sort,
       category,
       userId,
     })
+
 
     return c.json({
       expansions: list,

@@ -2,7 +2,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { InvestmentMetrics, ExpansionCategory } from '../../shared/types.js'
-import type { CardRecord } from '../db/schema.js'
+import type { CardRecord, ExpansionRecord } from '../db/schema.js'
+import { expansionsRepository } from '../repositories/expansionsRepository.js'
+import { collectorRepository } from '../repositories/collectorRepository.js'
+
 
 export interface CardPriceInput {
   localId: number
@@ -284,6 +287,74 @@ export class InvestmentService {
 
     return isPromoId || isPromoName ? 'promo' : 'booster'
   }
+
+  async getExpansionsWithYield(options: {
+    userId?: string
+    rarity?: string
+    sort?: string
+    category?: string
+  }): Promise<Array<ExpansionRecord & { collectionGapYield: number; category: ExpansionCategory }>> {
+    const allExpansions = await expansionsRepository.getAllExpansions()
+    const { allCards, cardsByExp } = await expansionsRepository.getCardsGroupedByExpansion()
+
+    // Filter by expansion category ('booster' | 'promo' | 'all', default: 'booster')
+    const requestedCategory = (options.category || 'booster').toLowerCase()
+    const filteredExpansions = allExpansions.filter((exp) => {
+      if (requestedCategory === 'all') return true
+      const cat = this.classifyExpansionCategory(exp.id, exp.name)
+      return cat === requestedCategory
+    })
+
+    // Map user owned pokemon to their highest rarity tier
+    const userOwnedRarityMap = new Map<number, number>()
+    if (options.userId) {
+      const cardsById = new Map<string, CardRecord>()
+      for (const card of allCards) {
+        cardsById.set(card.id, card)
+      }
+
+      const userCollection = await collectorRepository.getUserCollection(options.userId)
+      for (const item of userCollection) {
+        if (!item.collected) continue
+
+        let ownedTier = 0 // default sprite tier
+        if (item.cardId) {
+          const card = cardsById.get(item.cardId)
+          if (card) {
+            ownedTier = this.getRarityTier(card.rarity, card.isSecret)
+          } else {
+            ownedTier = 1
+          }
+        }
+
+        const existingTier = userOwnedRarityMap.get(item.pokedexId) ?? -1
+        if (ownedTier > existingTier) {
+          userOwnedRarityMap.set(item.pokedexId, ownedTier)
+        }
+      }
+    }
+
+    const rarityFilter = (options.rarity as TargetRarity) || 'any'
+    const enriched = filteredExpansions.map((exp) => {
+      const expCards = cardsByExp.get(exp.id) || []
+      const collectionGapYield = this.calculateCollectionGapYield(
+        expCards,
+        userOwnedRarityMap,
+        rarityFilter
+      )
+      const category = this.classifyExpansionCategory(exp.id, exp.name)
+
+      return {
+        ...exp,
+        collectionGapYield,
+        category,
+      }
+    })
+
+    const sortBy = options.sort || 'score'
+    return this.sortExpansions(enriched, sortBy)
+  }
 }
 
 export const investmentService = new InvestmentService()
+
