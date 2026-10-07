@@ -5,6 +5,7 @@ import { ImportBackupModal } from "@/components/ImportBackupModal"
 import { AuthModal, type CollectorProfile } from "@/components/auth/AuthModal"
 import { CollectorSettingsModal } from "@/components/settings/CollectorSettingsModal"
 import { BinderScannerModal, type CapturedBinderPage } from "@/components/scanner/BinderScannerModal"
+import { StagingReviewModal } from "@/components/scanner/StagingReviewModal"
 
 interface AppModalsProps {
   modalPokemon: Pokemon | null
@@ -28,6 +29,10 @@ interface AppModalsProps {
   scannerModalOpen: boolean
   onCloseScannerModal: () => void
   onProceedToReview: (pages: CapturedBinderPage[]) => void
+  stagingModalOpen: boolean
+  onCloseStagingModal: () => void
+  stagedPages: CapturedBinderPage[]
+  onSyncComplete?: (count: number) => void
 }
 
 export const AppModals: React.FC<AppModalsProps> = ({
@@ -52,6 +57,10 @@ export const AppModals: React.FC<AppModalsProps> = ({
   scannerModalOpen,
   onCloseScannerModal,
   onProceedToReview,
+  stagingModalOpen,
+  onCloseStagingModal,
+  stagedPages,
+  onSyncComplete,
 }) => (
   <>
     <CardSelectorModal
@@ -87,6 +96,14 @@ export const AppModals: React.FC<AppModalsProps> = ({
       open={scannerModalOpen}
       onClose={onCloseScannerModal}
       onProceedToReview={onProceedToReview}
+    />
+    <StagingReviewModal
+      open={stagingModalOpen}
+      onClose={onCloseStagingModal}
+      pages={stagedPages}
+      userId={currentUser?.id}
+      sessionToken={currentUser?.sessionToken}
+      onSyncComplete={onSyncComplete}
     />
   </>
 )

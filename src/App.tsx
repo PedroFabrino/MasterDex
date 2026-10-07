@@ -49,6 +49,7 @@ export function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
   const [scannerModalOpen, setScannerModalOpen] = useState(false)
+  const [stagingModalOpen, setStagingModalOpen] = useState(false)
   const [stagedPages, setStagedPages] = useState<CapturedBinderPage[]>([])
   const [highlightedPokemonId, setHighlightedPokemonId] = useState<number | null>(null)
 
@@ -204,6 +205,18 @@ export function App() {
         onCloseScannerModal={() => setScannerModalOpen(false)}
         onProceedToReview={(pages) => {
           setStagedPages(pages)
+          setStagingModalOpen(true)
+        }}
+        stagingModalOpen={stagingModalOpen}
+        onCloseStagingModal={() => setStagingModalOpen(false)}
+        stagedPages={stagedPages}
+        onSyncComplete={() => {
+          try {
+            const stored = localStorage.getItem("masterdex_collected")
+            if (stored) {
+              setCollected(JSON.parse(stored))
+            }
+          } catch {}
         }}
       />
     </SidebarProvider>
