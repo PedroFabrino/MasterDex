@@ -71,9 +71,28 @@ export const trackedExpansions = sqliteTable('tracked_expansions', {
   addedAt: integer('added_at', { mode: 'timestamp' }).notNull(),
 })
 
+export const cardPrices = sqliteTable('card_prices', {
+  id: text('id').primaryKey(),
+  cardId: text('card_id').notNull().references(() => cards.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(),
+  nativePrice: real('native_price').notNull(),
+  currency: text('currency').notNull(),
+  recordedAt: integer('recorded_at', { mode: 'timestamp' }).notNull(),
+})
+
+export const exchangeRates = sqliteTable('exchange_rates', {
+  pair: text('pair').primaryKey(),
+  rate: real('rate').notNull(),
+  fetchedAt: integer('fetched_at', { mode: 'timestamp' }).notNull(),
+})
+
 export type ExpansionRecord = typeof expansions.$inferSelect
 export type InsertExpansion = typeof expansions.$inferInsert
 export type CardRecord = typeof cards.$inferSelect
 export type InsertCard = typeof cards.$inferInsert
+export type CardPriceRecord = typeof cardPrices.$inferSelect
+export type InsertCardPrice = typeof cardPrices.$inferInsert
+export type ExchangeRateRecord = typeof exchangeRates.$inferSelect
+export type InsertExchangeRate = typeof exchangeRates.$inferInsert
 export type CollectorProfileRecord = typeof collectorProfiles.$inferSelect
 export type UserPokemonRecord = typeof userPokemon.$inferSelect

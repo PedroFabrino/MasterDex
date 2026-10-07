@@ -102,3 +102,16 @@ export interface CollectorPreferences {
   hiddenExpansions: string[]
 }
 
+export interface CardPrice {
+  id: string
+  cardId: string
+  provider: string
+  nativePrice: number
+  currency: string
+  recordedAt: number | Date
+}
+
+export interface CardWithPrices extends Card {
+  prices?: CardPrice[]
+}
+

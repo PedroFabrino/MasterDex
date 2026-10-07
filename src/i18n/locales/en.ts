@@ -195,6 +195,10 @@ export const en: TranslationDictionary = {
     analyzeNowButton: 'Analyze Market Now',
     noImage: 'No Image',
     marketLabel: 'Market',
+    syncPricesButton: 'Sync TCGdex Prices',
+    syncingPrices: 'Syncing Prices...',
+    syncPricesSuccess: 'Prices updated successfully!',
+    nativeQuote: '{provider}: {price}',
   },
   binderSearch: {
     placeholder: 'Search Pokémon by name... (Ctrl+K)',

@@ -121,6 +121,29 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
     );
   `)
 
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS card_prices (
+      id TEXT PRIMARY KEY,
+      card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL,
+      native_price REAL NOT NULL,
+      currency TEXT NOT NULL,
+      recorded_at INTEGER NOT NULL
+    );
+  `)
+
+  await client.execute(`
+    CREATE INDEX IF NOT EXISTS idx_card_prices_card_provider ON card_prices (card_id, provider);
+  `)
+
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS exchange_rates (
+      pair TEXT PRIMARY KEY,
+      rate REAL NOT NULL,
+      fetched_at INTEGER NOT NULL
+    );
+  `)
+
   // Defensive migrations for pre-existing databases
   for (const col of [
     "target_rarity TEXT NOT NULL DEFAULT 'any'",

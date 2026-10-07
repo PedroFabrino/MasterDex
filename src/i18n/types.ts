@@ -204,6 +204,10 @@ export interface TranslationDictionary {
     analyzeNowButton: string
     noImage: string
     marketLabel: string
+    syncPricesButton: string
+    syncingPrices: string
+    syncPricesSuccess: string
+    nativeQuote: string
   }
   binderSearch: {
     placeholder: string

@@ -125,6 +125,14 @@ _Avoid_: Price setting, market mode, currency option
 The cumulative monetary worth of all physical cards represented by Assigned Card Artworks across the collector's owned Binder Slots.
 _Avoid_: Binder value, collection worth, dex net worth
 
+**Portfolio Modal**:
+The detailed user interface dialog displaying a collector's total Binder Portfolio Value, breakdown by Pokémon generation/region, top valued cards owned, and multi-source price comparisons.
+_Avoid_: Valuation window, collection popup, price report
+
+**Exchange Rate Provider**:
+The service (AwesomeAPI) supplying daily currency quotations (USD/EUR to BRL) cached in SQLite to normalize foreign market prices for server-side ranking and portfolio calculations.
+_Avoid_: Forex service, currency crawler, rate scraper
+
 **Price History**:
 A chronological series of recorded market prices for a card used to analyze investment value appreciation or decline over time.
 _Avoid_: Price log, trend history

@@ -4,6 +4,9 @@ import { scraperService } from '../services/scraperService.js'
 import { tcgdexService } from '../services/tcgdexService.js'
 import { expansionsRepository } from '../repositories/expansionsRepository.js'
 import { investmentService } from '../services/investmentService.js'
+import { pricingRepository } from '../repositories/pricingRepository.js'
+import { exchangeRateService } from '../services/exchangeRateService.js'
+import { tcgdexPricingService } from '../services/tcgdexPricingService.js'
 
 
 export const tcgRoutes = new Hono()
@@ -40,6 +43,24 @@ tcgRoutes.get('/cards/search', async (c) => {
     })
   } catch (error: any) {
     return c.json({ error: error?.message || 'Failed to search cards' }, 500)
+  }
+})
+
+// GET /api/tcg/cards/:id/prices
+tcgRoutes.get('/cards/:id/prices', async (c) => {
+  const cardId = c.req.param('id')
+  try {
+    const [prices, rates] = await Promise.all([
+      pricingRepository.getPricesByCardId(cardId),
+      exchangeRateService.getAllRates(),
+    ])
+    return c.json({
+      cardId,
+      prices,
+      rates,
+    })
+  } catch (error: any) {
+    return c.json({ error: error?.message || 'Failed to fetch card prices' }, 500)
   }
 })
 
@@ -97,13 +118,52 @@ tcgRoutes.get('/expansions/:slug', async (c) => {
     const secretCards = await expansionsRepository.getSecretCardsByExpansionId(expansion.id)
     const allCards = await expansionsRepository.getAllCardsByExpansionId(expansion.id)
 
+    const allCardIds = allCards.map((card) => card.id)
+    const [pricesMap, rates] = await Promise.all([
+      pricingRepository.getPricesByCardIds(allCardIds),
+      exchangeRateService.getAllRates(),
+    ])
+
+    const cardsWithPrices = allCards.map((card) => ({
+      ...card,
+      prices: pricesMap.get(card.id) || [],
+    }))
+
+    const secretsWithPrices = secretCards.map((card) => ({
+      ...card,
+      prices: pricesMap.get(card.id) || [],
+    }))
+
     return c.json({
       expansion,
-      secretCards,
-      cards: allCards,
+      secretCards: secretsWithPrices,
+      cards: cardsWithPrices,
+      rates,
     })
   } catch (error: any) {
     return c.json({ error: error?.message || 'Failed to fetch expansion' }, 500)
+  }
+})
+
+// POST /api/tcg/expansions/:slug/sync-prices
+tcgRoutes.post('/expansions/:slug/sync-prices', async (c) => {
+  const slug = c.req.param('slug')
+  try {
+    const expansion = await expansionsRepository.getExpansionBySlug(slug)
+    if (!expansion) {
+      return c.json({ error: 'Expansion not found' }, 404)
+    }
+
+    const result = await tcgdexPricingService.syncExpansionPrices(expansion.id)
+    const updated = await expansionsRepository.getExpansionById(expansion.id)
+
+    return c.json({
+      success: true,
+      expansion: updated,
+      ...result,
+    })
+  } catch (error: any) {
+    return c.json({ error: error?.message || 'Failed to sync expansion prices' }, 500)
   }
 })
 

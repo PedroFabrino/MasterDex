@@ -6,7 +6,8 @@ import { Separator } from "@/components/ui/separator"
 import { Sparkles, Loader2, RefreshCw, ExternalLink, TrendingUp } from "lucide-react"
 import { useTranslation } from "@/i18n"
 import { apiClient } from "@/lib/apiClient"
-import type { Expansion, Card } from "../../../shared/types.js"
+import { cn } from "@/lib/utils"
+import type { Expansion, Card, CardWithPrices } from "../../../shared/types.js"
 
 interface ExpansionDetailModalProps {
   expansion: (Expansion & { collectionGapYield?: number }) | null
@@ -23,10 +24,28 @@ export function ExpansionDetailModal({
 }: ExpansionDetailModalProps) {
   const { t, locale } = useTranslation()
   const [detailData, setDetailData] = useState<{
-    secretCards: Card[]
-    cards: Card[]
+    secretCards: CardWithPrices[]
+    cards: CardWithPrices[]
   } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+
+  const handleSyncPrices = async () => {
+    if (!expansion || isSyncing) return
+    setIsSyncing(true)
+    try {
+      await apiClient.syncExpansionPrices(expansion.slug)
+      const data = await apiClient.getExpansionDetails(expansion.slug)
+      setDetailData({
+        secretCards: data.secretCards || [],
+        cards: data.cards || [],
+      })
+    } catch (err) {
+      console.warn("Failed to sync prices:", err)
+    } finally {
+      setIsSyncing(false)
+    }
+  }
 
   useEffect(() => {
     if (!open || !expansion) {
@@ -96,6 +115,19 @@ export function ExpansionDetailModal({
             </div>
 
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncPrices}
+                disabled={isSyncing}
+                className="border-violet-700/60 text-violet-300 bg-violet-950/40 hover:bg-violet-900/60 hover:text-violet-100 text-xs"
+                title={t("investor.syncPricesButton")}
+              >
+                <RefreshCw className={cn("size-3.5", isSyncing && "animate-spin")} />
+                <span className="hidden sm:inline">
+                  {isSyncing ? t("investor.syncingPrices") : t("investor.syncPricesButton")}
+                </span>
+              </Button>
               {onTriggerScrape && (
                 <Button
                   variant="outline"
@@ -235,6 +267,32 @@ export function ExpansionDetailModal({
                         {card.marketPrice > 0 ? formatBRL(card.marketPrice) : "—"}
                       </span>
                     </div>
+
+                    {(card as any).prices && (card as any).prices.length > 0 && (
+                      <div className="pt-1 space-y-0.5 border-t border-zinc-800/50">
+                        {(card as any).prices.map((p: any) => (
+                          <div
+                            key={p.id || p.provider}
+                            className="text-[10px] text-zinc-400 font-mono flex items-center justify-between"
+                          >
+                            <span className="text-zinc-500">
+                              {p.provider === "tcgdex_tcgplayer"
+                                ? "TCG"
+                                : p.provider === "tcgdex_cardmarket"
+                                ? "CM"
+                                : "Liga"}
+                            </span>
+                            <span className="text-zinc-300">
+                              {p.currency === "USD"
+                                ? `$${p.nativePrice}`
+                                : p.currency === "EUR"
+                                ? `€${p.nativePrice}`
+                                : `R$ ${p.nativePrice}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

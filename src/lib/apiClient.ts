@@ -56,8 +56,10 @@ export interface CollectionResponse {
 }
 
 export interface ExpansionDetailsResponse {
+  expansion?: any
   secretCards: any[]
   cards: any[]
+  rates?: { USD_BRL: number; EUR_BRL: number }
 }
 
 export const apiClient = {
@@ -201,6 +203,21 @@ export const apiClient = {
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || "Failed to scrape expansion")
     return data
+  },
+
+  async syncExpansionPrices(slug: string): Promise<any> {
+    const res = await fetch(`/api/tcg/expansions/${encodeURIComponent(slug)}/sync-prices`, {
+      method: "POST",
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || "Failed to sync expansion prices")
+    return data
+  },
+
+  async getCardPrices(cardId: string): Promise<{ cardId: string; prices: any[]; rates: Record<string, number> }> {
+    const res = await fetch(`/api/tcg/cards/${encodeURIComponent(cardId)}/prices`)
+    if (!res.ok) throw new Error(`Failed to load card prices (${res.status})`)
+    return res.json()
   },
 
   async loginWithGoogle(
