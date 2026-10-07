@@ -109,6 +109,17 @@ describe('TcgDexService search and caching', () => {
       expect(card.set.total).not.toBe(999)
     }
   })
+
+  it('locates promo cards like Charizard 023 promo (MEP-023) across query variations', async () => {
+    const res1 = await tcgdexService.searchCards('charizard 023 promo', 5)
+    expect(res1.length).toBeGreaterThan(0)
+    expect(res1[0].id).toBe('mep-023')
+    expect(res1[0].localId).toBe('023')
+
+    const res2 = await tcgdexService.searchCards('mep 023', 5)
+    expect(res2.length).toBeGreaterThan(0)
+    expect(res2[0].id).toBe('mep-023')
+  })
 })
 
 describe('TCG Cards Search API route', () => {

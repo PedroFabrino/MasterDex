@@ -122,27 +122,61 @@ export class TcgDexService {
         const res = await fetch(url, { signal: AbortSignal.timeout(4500) })
         if (res.ok) {
           const data = (await res.json()) as { cards?: TcgDexBriefCard[] }
-          const cardsList = Array.isArray(data.cards) ? data.cards : []
-          rawCards = cardsList.filter((c) => Boolean(c.image))
+          rawCards = Array.isArray(data.cards) ? data.cards : []
         }
       } else {
-        const searchParam = parsed.name || parsed.localId || ''
-        if (searchParam) {
-          const url = `${base}/cards?name=${encodeURIComponent(searchParam)}`
-          const res = await fetch(url, { signal: AbortSignal.timeout(4500) })
-          if (res.ok) {
-            const data = (await res.json()) as TcgDexBriefCard[]
-            const cardsList = Array.isArray(data) ? data : []
-            rawCards = cardsList.filter((c) => Boolean(c.image))
-          } else if (parsed.name && parsed.name.includes(' ')) {
-            const firstWord = parsed.name.split(' ')[0]
-            const fallbackRes = await fetch(`${base}/cards?name=${encodeURIComponent(firstWord)}`, {
-              signal: AbortSignal.timeout(4500),
+        // Direct card ID lookup (e.g. "mep-023")
+        if (parsed.name && parsed.localId) {
+          try {
+            const cardId = `${parsed.name.toLowerCase()}-${parsed.localId}`
+            const directRes = await fetch(`${base}/cards/${encodeURIComponent(cardId)}`, {
+              signal: AbortSignal.timeout(3000),
             })
-            if (fallbackRes.ok) {
-              const data = (await fallbackRes.json()) as TcgDexBriefCard[]
-              const cardsList = Array.isArray(data) ? data : []
-              rawCards = cardsList.filter((c) => Boolean(c.image))
+            if (directRes.ok) {
+              const cardData = (await directRes.json()) as TcgDexBriefCard
+              if (cardData && cardData.id) {
+                rawCards = [cardData]
+              }
+            }
+          } catch {
+            // Ignore direct lookup error
+          }
+        }
+
+        // Set ID cards lookup if no direct card and name matches a set (e.g. "mep")
+        if (rawCards.length === 0 && parsed.name && !parsed.name.includes(' ')) {
+          try {
+            const setRes = await fetch(`${base}/sets/${encodeURIComponent(parsed.name.toLowerCase())}`, {
+              signal: AbortSignal.timeout(3000),
+            })
+            if (setRes.ok) {
+              const setData = (await setRes.json()) as { cards?: TcgDexBriefCard[] }
+              if (Array.isArray(setData.cards)) {
+                rawCards = setData.cards
+              }
+            }
+          } catch {
+            // Ignore set lookup error
+          }
+        }
+
+        if (rawCards.length === 0) {
+          const searchParam = parsed.name || parsed.localId || ''
+          if (searchParam) {
+            const url = `${base}/cards?name=${encodeURIComponent(searchParam)}`
+            const res = await fetch(url, { signal: AbortSignal.timeout(4500) })
+            if (res.ok) {
+              const data = (await res.json()) as TcgDexBriefCard[]
+              rawCards = Array.isArray(data) ? data : []
+            } else if (parsed.name && parsed.name.includes(' ')) {
+              const firstWord = parsed.name.split(' ')[0]
+              const fallbackRes = await fetch(`${base}/cards?name=${encodeURIComponent(firstWord)}`, {
+                signal: AbortSignal.timeout(4500),
+              })
+              if (fallbackRes.ok) {
+                const data = (await fallbackRes.json()) as TcgDexBriefCard[]
+                rawCards = Array.isArray(data) ? data : []
+              }
             }
           }
         }
@@ -189,12 +223,22 @@ export class TcgDexService {
       let rawCards: Array<TcgDexBriefCard & { language: string }> = []
 
       if (lang === 'all') {
-        // Smart parallel queries across English (EN) and Japanese (JA) endpoints
-        const [enCards, jaCards] = await Promise.all([
+        // Smart parallel queries across Portuguese (PT), English (EN), and Japanese (JA) endpoints
+        const [ptCards, enCards, jaCards] = await Promise.all([
+          this.fetchCardsForLanguage('pt', parsed, resolvedDexId),
           this.fetchCardsForLanguage('en', parsed, resolvedDexId),
           this.fetchCardsForLanguage('ja', parsed, resolvedDexId),
         ])
-        rawCards = [...enCards, ...jaCards]
+        const cardMap = new Map<string, TcgDexBriefCard & { language: string }>()
+        for (const c of [...ptCards, ...enCards, ...jaCards]) {
+          const existing = cardMap.get(c.id)
+          if (!existing) {
+            cardMap.set(c.id, c)
+          } else if (!existing.image && c.image) {
+            cardMap.set(c.id, { ...existing, image: c.image })
+          }
+        }
+        rawCards = Array.from(cardMap.values())
 
         // Fallback to Chinese if zero cards match
         if (rawCards.length === 0) {
@@ -205,21 +249,34 @@ export class TcgDexService {
         rawCards = await this.fetchCardsForLanguage(lang, parsed, resolvedDexId)
       }
 
+      if (
+        dexId === 151 &&
+        parsed.name?.toLowerCase().includes('mew') &&
+        !parsed.name?.toLowerCase().includes('mewtwo')
+      ) {
+        rawCards = rawCards.filter((c) => !c.name.toLowerCase().includes('mewtwo'))
+      }
+
       // Build mapped results
       const results: TcgCardSearchResult[] = []
       for (const card of rawCards) {
-        if (!card.image) continue
-
         const setId = (card.id.split('-')[0] || '').toLowerCase()
         const setMeta = setsMap.get(setId)
 
-        const imageUrl = card.image.endsWith('.webp') || card.image.endsWith('.png')
-          ? card.image
-          : `${card.image}/high.webp`
+        const defaultAssetUrl = `https://assets.tcgdex.net/${card.language || 'en'}/${setId}/${card.localId}`
+        const imageUrl = card.image
+          ? card.image.endsWith('.webp') || card.image.endsWith('.png')
+            ? card.image
+            : `${card.image}/high.webp`
+          : `${defaultAssetUrl}/high.webp`
 
-        const thumbnailUrl = card.image.endsWith('.webp') || card.image.endsWith('.png')
-          ? card.image
-          : `${card.image}/low.webp`
+        const thumbnailUrl = card.image
+          ? card.image.endsWith('.webp') || card.image.endsWith('.png')
+            ? card.image
+            : `${card.image}/low.webp`
+          : `${defaultAssetUrl}/low.webp`
+
+        if (!imageUrl) continue
 
         const rarityInfo = this.getCardRarity(card, setMeta?.total)
 
