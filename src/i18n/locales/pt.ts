@@ -28,7 +28,21 @@ export const pt: TranslationDictionary = {
     portuguese: 'Português',
     english: 'Inglês',
     switchToLang: 'Mudar idioma',
+    speciesProgressTooltip: 'Coleção: {collected}/{total} Pokémon ({pct}%)',
+    tcgCardsCount: '{count} Cartas',
+    tcgCardsTooltip: '{count} cartas TCG atribuídas',
   },
+  theme: {
+    toggleTheme: 'Alternar tema',
+    light: 'Claro',
+    dark: 'Escuro',
+    system: 'Sistema',
+  },
+  cardSlot: {
+    slotAriaLabel: 'Espaço #{id} {name}, {status}',
+    tcgFallbackBadge: 'TCG',
+  },
+
   sidebar: {
     binderIndex: 'Índice do Fichário',
     jumpPrompt: 'Pule por região ou número da Dex',
@@ -85,7 +99,9 @@ export const pt: TranslationDictionary = {
     exportDesc: 'Faça o download do estado atual da sua PokéBinder.',
     exportJson: 'Exportar JSON',
     exportCsv: 'Exportar CSV',
+    exportSuccess: 'Exportação gerada com sucesso! {count} itens exportados.',
     importTitle: 'Restaurar do Arquivo',
+
     importDesc: 'Selecione um arquivo .json ou .csv exportado anteriormente.',
     importFileButton: 'Importar Arquivo (.json / .csv)',
     fileImportSuccess: 'Restaurado com sucesso! {count} itens importados.',

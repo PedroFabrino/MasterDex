@@ -3,6 +3,7 @@ import { type Pokemon, type CollectedSlot, type TcgCard } from "@/data/pokemon"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useTranslation } from "@/i18n"
 
 export interface CardSlotProps {
   pokemon: Pokemon
@@ -12,7 +13,9 @@ export interface CardSlotProps {
 }
 
 export function CardSlot({ pokemon, slot, onClick, isHighlighted }: CardSlotProps) {
+  const { t } = useTranslation()
   const isCollected = !!slot
+
   const hasTcgCard = slot?.tcgCard != null
   const slotRef = useRef<HTMLButtonElement>(null)
 
@@ -26,6 +29,11 @@ export function CardSlot({ pokemon, slot, onClick, isHighlighted }: CardSlotProp
     <button
       ref={slotRef}
       onClick={onClick}
+      aria-label={t("cardSlot.slotAriaLabel", {
+        id: pokemon.id,
+        name: pokemon.name,
+        status: isCollected ? t("common.success") : t("common.emptySlot"),
+      })}
       data-highlighted={isHighlighted ? "true" : undefined}
       className={cn(
         "group relative w-full aspect-[2.5/3.5] rounded-xl overflow-hidden transition-all duration-300 cursor-pointer outline-none",
@@ -64,9 +72,14 @@ export function CardSlot({ pokemon, slot, onClick, isHighlighted }: CardSlotProp
           variant="outline"
           className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-10 text-[9px] px-1.5 py-0 h-4 border-violet-500/60 text-violet-300 bg-zinc-900/80 backdrop-blur-sm whitespace-nowrap"
         >
-          {slot?.cardLanguage ? slot.cardLanguage.toUpperCase() : (slot?.tcgCard?.language ? slot.tcgCard.language.toUpperCase() : "TCG")}
+          {slot?.cardLanguage
+            ? slot.cardLanguage.toUpperCase()
+            : slot?.tcgCard?.language
+            ? slot.tcgCard.language.toUpperCase()
+            : t("cardSlot.tcgFallbackBadge")}
         </Badge>
       )}
+
 
       {/* Hover overlay for uncollected */}
       {!isCollected && (

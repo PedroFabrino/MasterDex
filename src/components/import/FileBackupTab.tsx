@@ -40,7 +40,7 @@ export const FileBackupTab: React.FC<FileBackupTabProps> = ({
     a.download = `masterdex-collection-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
-    setStatusMessage({ type: "success", text: t("backupModal.fileImportSuccess", { count: Object.keys(collected).length }) })
+    setStatusMessage({ type: "success", text: t("backupModal.exportSuccess", { count: Object.keys(collected).length }) })
   }
 
   const handleExportCsv = () => {
@@ -61,8 +61,9 @@ export const FileBackupTab: React.FC<FileBackupTabProps> = ({
     a.download = `masterdex-collection-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
-    setStatusMessage({ type: "success", text: t("backupModal.fileImportSuccess", { count: Object.keys(collected).length }) })
+    setStatusMessage({ type: "success", text: t("backupModal.exportSuccess", { count: Object.keys(collected).length }) })
   }
+
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

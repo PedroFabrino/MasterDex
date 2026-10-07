@@ -28,7 +28,21 @@ export interface TranslationDictionary {
     portuguese: string
     english: string
     switchToLang: string
+    speciesProgressTooltip: string
+    tcgCardsCount: string
+    tcgCardsTooltip: string
   }
+  theme: {
+    toggleTheme: string
+    light: string
+    dark: string
+    system: string
+  }
+  cardSlot: {
+    slotAriaLabel: string
+    tcgFallbackBadge: string
+  }
+
   sidebar: {
     binderIndex: string
     jumpPrompt: string
@@ -86,6 +100,8 @@ export interface TranslationDictionary {
     exportDesc: string
     exportJson: string
     exportCsv: string
+    exportSuccess: string
+
     importTitle: string
     importDesc: string
     importFileButton: string

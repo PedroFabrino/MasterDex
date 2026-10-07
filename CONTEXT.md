@@ -189,3 +189,11 @@ _Avoid_: Shared URL, binder invite, friend link
 The collector-configured binary setting (Enabled or Disabled) governing whether external visitors can access the collector's Shared Binder.
 _Avoid_: Privacy switch, public flag, visibility mode
 
+**Share Slug**:
+A compact, unique alphanumeric string identifying a Collector Profile's Shared Binder in the Public Share Link.
+_Avoid_: Share ID, profile code, binder hash
+
+**Public Binder Error View**:
+The branded empty state interface displayed to visitors when a Shared Binder link is private, disabled, or non-existent.
+_Avoid_: Error page, 404 card, not found screen
+

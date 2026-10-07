@@ -129,7 +129,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           {/* Species Progress */}
           <div
             className="hidden sm:flex items-center gap-1.5 bg-zinc-900/80 rounded-lg px-2.5 py-1.5 border border-zinc-800/60"
-            title={`Coleção: ${totalCollected}/${totalPokemonCount} Pokémon (${totalPct}%)`}
+            title={t("header.speciesProgressTooltip", {
+              collected: totalCollected,
+              total: totalPokemonCount,
+              pct: totalPct,
+            })}
           >
             <span className="text-xs text-zinc-300 font-medium font-mono">
               {totalCollected}/{totalPokemonCount}
@@ -139,13 +143,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           {/* Dedicated TCG Card Counter */}
           <div
             className="hidden md:flex items-center gap-1.5 bg-violet-950/40 rounded-lg px-2.5 py-1.5 border border-violet-800/60"
-            title={`${totalCards} cartas TCG atribuídas`}
+            title={t("header.tcgCardsTooltip", { count: totalCards })}
           >
             <Sparkles className="size-3.5 text-amber-400 shrink-0" />
             <span className="text-xs text-violet-200 font-medium">
-              {totalCards} Cartas
+              {t("header.tcgCardsCount", { count: totalCards })}
             </span>
           </div>
+
 
           <Badge
             variant="outline"
