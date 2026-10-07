@@ -3,6 +3,7 @@ import { type Pokemon, type CollectedSlot, type TcgCard } from "@/data/pokemon"
 import { CardSelectorModal } from "@/components/CardSelectorModal"
 import { ImportBackupModal } from "@/components/ImportBackupModal"
 import { AuthModal, type CollectorProfile } from "@/components/auth/AuthModal"
+import { CollectorSettingsModal } from "@/components/settings/CollectorSettingsModal"
 
 interface AppModalsProps {
   modalPokemon: Pokemon | null
@@ -20,6 +21,9 @@ interface AppModalsProps {
   onLogout: () => void
   onSignInWithGoogle?: () => void
   isAuthenticating?: boolean
+  settingsModalOpen: boolean
+  onCloseSettingsModal: () => void
+  onOpenSettingsModal?: () => void
 }
 
 export const AppModals: React.FC<AppModalsProps> = ({
@@ -38,6 +42,9 @@ export const AppModals: React.FC<AppModalsProps> = ({
   onLogout,
   onSignInWithGoogle,
   isAuthenticating,
+  settingsModalOpen,
+  onCloseSettingsModal,
+  onOpenSettingsModal,
 }) => (
   <>
     <CardSelectorModal
@@ -62,6 +69,13 @@ export const AppModals: React.FC<AppModalsProps> = ({
       onLogout={onLogout}
       onSignInWithGoogle={onSignInWithGoogle}
       isAuthenticating={isAuthenticating}
+      onOpenSettings={onOpenSettingsModal}
+    />
+    <CollectorSettingsModal
+      open={settingsModalOpen}
+      onClose={onCloseSettingsModal}
+      userId={currentUser?.id}
     />
   </>
 )
+

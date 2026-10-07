@@ -46,6 +46,7 @@ export function App() {
   const [modalOpen, setModalOpen] = useState(false)
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false)
   const [highlightedPokemonId, setHighlightedPokemonId] = useState<number | null>(null)
 
   const binderSearchInputRef = useRef<HTMLInputElement>(null)
@@ -135,6 +136,7 @@ export function App() {
             totalPokemonCount={POKEMON.length}
             totalPct={totalPct}
             onOpenImportModal={() => setImportModalOpen(true)}
+            onOpenSettingsModal={() => setSettingsModalOpen(true)}
             currentUser={currentUser}
             onOpenAuthModal={() => setAuthModalOpen(true)}
             onSignInWithGoogle={triggerGoogleSignIn}
@@ -191,6 +193,9 @@ export function App() {
         onLogout={handleLogout}
         onSignInWithGoogle={triggerGoogleSignIn}
         isAuthenticating={isAuthenticating}
+        settingsModalOpen={settingsModalOpen}
+        onCloseSettingsModal={() => setSettingsModalOpen(false)}
+        onOpenSettingsModal={() => setSettingsModalOpen(true)}
       />
     </SidebarProvider>
   )

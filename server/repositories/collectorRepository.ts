@@ -267,6 +267,74 @@ export class CollectorRepository {
 
     return await this.getPreferences(userId)
   }
+
+  async getSettings(userId: string): Promise<CollectorSettings> {
+    const profile = await this.getProfileById(userId)
+    if (!profile) {
+      return {
+        geminiApiKey: null,
+        maskedGeminiApiKey: null,
+        hasGeminiApiKey: false,
+        favoredLanguages: ['pt', 'en', 'ja'],
+      }
+    }
+    let favoredLanguages: string[] = ['pt', 'en', 'ja']
+    try {
+      if (profile.favoredLanguages) {
+        favoredLanguages = JSON.parse(profile.favoredLanguages)
+      }
+    } catch {
+      favoredLanguages = ['pt', 'en', 'ja']
+    }
+    return {
+      geminiApiKey: profile.geminiApiKey || null,
+      maskedGeminiApiKey: maskApiKey(profile.geminiApiKey),
+      hasGeminiApiKey: Boolean(profile.geminiApiKey),
+      favoredLanguages,
+    }
+  }
+
+  async updateSettings(
+    userId: string,
+    updates: { geminiApiKey?: string | null; favoredLanguages?: string[] }
+  ): Promise<CollectorSettings> {
+    const profile = await this.getProfileById(userId)
+    if (!profile) {
+      await this.upsertProfile({
+        id: userId,
+        email: `${userId}@local.dev`,
+        name: userId,
+      })
+    }
+
+    const payload: { geminiApiKey?: string | null; favoredLanguages?: string } = {}
+    if (updates.geminiApiKey !== undefined) {
+      payload.geminiApiKey = updates.geminiApiKey ? updates.geminiApiKey.trim() : null
+    }
+    if (updates.favoredLanguages !== undefined) {
+      payload.favoredLanguages = JSON.stringify(updates.favoredLanguages)
+    }
+
+    if (Object.keys(payload).length > 0) {
+      await db.update(collectorProfiles).set(payload).where(eq(collectorProfiles.id, userId))
+    }
+
+    return await this.getSettings(userId)
+  }
+}
+
+export function maskApiKey(key: string | null | undefined): string | null {
+  if (!key) return null
+  if (key.length <= 8) return '****'
+  return `${key.slice(0, 6)}...${key.slice(-4)}`
+}
+
+export interface CollectorSettings {
+  geminiApiKey: string | null
+  maskedGeminiApiKey: string | null
+  hasGeminiApiKey: boolean
+  favoredLanguages: string[]
 }
 
 export const collectorRepository = new CollectorRepository()
+

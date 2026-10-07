@@ -214,4 +214,33 @@ export interface TranslationDictionary {
     collectedStatus: string
     cardAssignedStatus: string
   }
+  settings: {
+    title: string
+    description: string
+    byokTitle: string
+    byokDescription: string
+    apiKeyLabel: string
+    apiKeyPlaceholder: string
+    showKey: string
+    hideKey: string
+    testConnection: string
+    testingConnection: string
+    testSuccess: string
+    testFailed: string
+    keyConfigured: string
+    noKeyConfigured: string
+    clearKey: string
+    saveSettings: string
+    savingSettings: string
+    settingsSaved: string
+    favoredLanguagesTitle: string
+    favoredLanguagesDesc: string
+    moveUp: string
+    moveDown: string
+    langPt: string
+    langEn: string
+    langJa: string
+    menuButton: string
+  }
 }
+
