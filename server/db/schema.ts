@@ -9,6 +9,8 @@ export const collectorProfiles = sqliteTable('collector_profiles', {
   seededFromSheet: integer('seeded_from_sheet', { mode: 'boolean' }).notNull().default(false),
   targetRarity: text('target_rarity').notNull().default('any'),
   hiddenExpansions: text('hidden_expansions').notNull().default('[]'),
+  geminiApiKey: text('gemini_api_key'),
+  favoredLanguages: text('favored_languages').notNull().default('["pt", "en", "ja"]'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 })
 

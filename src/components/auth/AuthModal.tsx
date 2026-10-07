@@ -14,6 +14,7 @@ import {
   LogOut,
   Mail,
   User,
+  Settings,
 } from "lucide-react"
 import { useTranslation } from "@/i18n"
 
@@ -35,6 +36,7 @@ interface AuthModalProps {
   onLogout: () => void
   onSignInWithGoogle?: () => void
   isAuthenticating?: boolean
+  onOpenSettings?: () => void
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -44,6 +46,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onLogout,
   onSignInWithGoogle,
   isAuthenticating = false,
+  onOpenSettings,
 }) => {
   const { t } = useTranslation()
 
@@ -108,6 +111,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             <Button
               onClick={() => {
+                onClose()
+                onOpenSettings?.()
+              }}
+              variant="outline"
+              size="sm"
+              className="w-full border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Settings className="size-3.5 text-violet-400" />
+              {t("settings.menuButton")}
+            </Button>
+
+            <Button
+              onClick={() => {
                 onLogout()
                 onClose()
               }}
@@ -151,6 +167,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 />
               </svg>
               {t("auth.signInGoogle")}
+            </Button>
+
+            <Button
+              onClick={() => {
+                onClose()
+                onOpenSettings?.()
+              }}
+              variant="outline"
+              size="sm"
+              className="w-full border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Settings className="size-3.5 text-violet-400" />
+              {t("settings.menuButton")}
             </Button>
           </div>
         )}

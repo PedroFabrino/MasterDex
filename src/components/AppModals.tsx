@@ -3,6 +3,9 @@ import { type Pokemon, type CollectedSlot, type TcgCard } from "@/data/pokemon"
 import { CardSelectorModal } from "@/components/CardSelectorModal"
 import { ImportBackupModal } from "@/components/ImportBackupModal"
 import { AuthModal, type CollectorProfile } from "@/components/auth/AuthModal"
+import { CollectorSettingsModal } from "@/components/settings/CollectorSettingsModal"
+import { BinderScannerModal, type CapturedBinderPage } from "@/components/scanner/BinderScannerModal"
+import { StagingReviewModal } from "@/components/scanner/StagingReviewModal"
 
 interface AppModalsProps {
   modalPokemon: Pokemon | null
@@ -20,6 +23,16 @@ interface AppModalsProps {
   onLogout: () => void
   onSignInWithGoogle?: () => void
   isAuthenticating?: boolean
+  settingsModalOpen: boolean
+  onCloseSettingsModal: () => void
+  onOpenSettingsModal?: () => void
+  scannerModalOpen: boolean
+  onCloseScannerModal: () => void
+  onProceedToReview: (pages: CapturedBinderPage[]) => void
+  stagingModalOpen: boolean
+  onCloseStagingModal: () => void
+  stagedPages: CapturedBinderPage[]
+  onSyncComplete?: (count: number) => void
 }
 
 export const AppModals: React.FC<AppModalsProps> = ({
@@ -38,6 +51,16 @@ export const AppModals: React.FC<AppModalsProps> = ({
   onLogout,
   onSignInWithGoogle,
   isAuthenticating,
+  settingsModalOpen,
+  onCloseSettingsModal,
+  onOpenSettingsModal,
+  scannerModalOpen,
+  onCloseScannerModal,
+  onProceedToReview,
+  stagingModalOpen,
+  onCloseStagingModal,
+  stagedPages,
+  onSyncComplete,
 }) => (
   <>
     <CardSelectorModal
@@ -62,6 +85,26 @@ export const AppModals: React.FC<AppModalsProps> = ({
       onLogout={onLogout}
       onSignInWithGoogle={onSignInWithGoogle}
       isAuthenticating={isAuthenticating}
+      onOpenSettings={onOpenSettingsModal}
+    />
+    <CollectorSettingsModal
+      open={settingsModalOpen}
+      onClose={onCloseSettingsModal}
+      userId={currentUser?.id}
+    />
+    <BinderScannerModal
+      open={scannerModalOpen}
+      onClose={onCloseScannerModal}
+      onProceedToReview={onProceedToReview}
+    />
+    <StagingReviewModal
+      open={stagingModalOpen}
+      onClose={onCloseStagingModal}
+      pages={stagedPages}
+      userId={currentUser?.id}
+      sessionToken={currentUser?.sessionToken}
+      onSyncComplete={onSyncComplete}
     />
   </>
 )
+

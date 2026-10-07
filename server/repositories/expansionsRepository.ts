@@ -308,6 +308,21 @@ export class ExpansionsRepository {
       .where(eq(priceHistory.cardId, cardId))
       .orderBy(desc(priceHistory.recordedAt))
   }
+
+  async findMatchingCards(opts: {
+    pokedexId?: number
+    localId?: number
+    name?: string
+  }): Promise<CardRecord[]> {
+    const all = await this.getAllCards()
+    return all.filter((c) => {
+      if (opts.pokedexId && c.pokedexId === opts.pokedexId) return true
+      if (opts.localId !== undefined && c.localId === opts.localId) return true
+      if (opts.name && c.name.toLowerCase().includes(opts.name.toLowerCase())) return true
+      return false
+    })
+  }
 }
 
 export const expansionsRepository = new ExpansionsRepository()
+

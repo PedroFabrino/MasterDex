@@ -5,6 +5,7 @@ import { BinderPageView } from "@/components/BinderPageView"
 import { BinderSearchBar } from "@/components/BinderSearchBar"
 import { BinderSpine } from "@/components/BinderSpine"
 import { type CollectorProfile } from "@/components/auth/AuthModal"
+import { type CapturedBinderPage } from "@/components/scanner/BinderScannerModal"
 import { AppHeader } from "@/components/AppHeader"
 import { BinderLegend } from "@/components/BinderLegend"
 import { TcgInvestorDashboard } from "@/components/investor/TcgInvestorDashboard"
@@ -46,6 +47,10 @@ export function App() {
   const [modalOpen, setModalOpen] = useState(false)
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false)
+  const [scannerModalOpen, setScannerModalOpen] = useState(false)
+  const [stagingModalOpen, setStagingModalOpen] = useState(false)
+  const [stagedPages, setStagedPages] = useState<CapturedBinderPage[]>([])
   const [highlightedPokemonId, setHighlightedPokemonId] = useState<number | null>(null)
 
   const binderSearchInputRef = useRef<HTMLInputElement>(null)
@@ -135,6 +140,8 @@ export function App() {
             totalPokemonCount={POKEMON.length}
             totalPct={totalPct}
             onOpenImportModal={() => setImportModalOpen(true)}
+            onOpenSettingsModal={() => setSettingsModalOpen(true)}
+            onOpenScannerModal={() => setScannerModalOpen(true)}
             currentUser={currentUser}
             onOpenAuthModal={() => setAuthModalOpen(true)}
             onSignInWithGoogle={triggerGoogleSignIn}
@@ -191,6 +198,26 @@ export function App() {
         onLogout={handleLogout}
         onSignInWithGoogle={triggerGoogleSignIn}
         isAuthenticating={isAuthenticating}
+        settingsModalOpen={settingsModalOpen}
+        onCloseSettingsModal={() => setSettingsModalOpen(false)}
+        onOpenSettingsModal={() => setSettingsModalOpen(true)}
+        scannerModalOpen={scannerModalOpen}
+        onCloseScannerModal={() => setScannerModalOpen(false)}
+        onProceedToReview={(pages) => {
+          setStagedPages(pages)
+          setStagingModalOpen(true)
+        }}
+        stagingModalOpen={stagingModalOpen}
+        onCloseStagingModal={() => setStagingModalOpen(false)}
+        stagedPages={stagedPages}
+        onSyncComplete={() => {
+          try {
+            const stored = localStorage.getItem("masterdex_collected")
+            if (stored) {
+              setCollected(JSON.parse(stored))
+            }
+          } catch {}
+        }}
       />
     </SidebarProvider>
   )

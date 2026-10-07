@@ -48,6 +48,8 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
       seeded_from_sheet INTEGER NOT NULL DEFAULT 0,
       target_rarity TEXT NOT NULL DEFAULT 'any',
       hidden_expansions TEXT NOT NULL DEFAULT '[]',
+      gemini_api_key TEXT,
+      favored_languages TEXT NOT NULL DEFAULT '["pt", "en", "ja"]',
       created_at INTEGER NOT NULL
     );
   `)
@@ -120,7 +122,12 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
   `)
 
   // Defensive migrations for pre-existing databases
-  for (const col of ["target_rarity TEXT NOT NULL DEFAULT 'any'", "hidden_expansions TEXT NOT NULL DEFAULT '[]'"]) {
+  for (const col of [
+    "target_rarity TEXT NOT NULL DEFAULT 'any'",
+    "hidden_expansions TEXT NOT NULL DEFAULT '[]'",
+    "gemini_api_key TEXT",
+    "favored_languages TEXT NOT NULL DEFAULT '[\"pt\", \"en\", \"ja\"]'",
+  ]) {
     try {
       await client.execute(`ALTER TABLE collector_profiles ADD COLUMN ${col};`)
     } catch {
