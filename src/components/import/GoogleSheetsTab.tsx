@@ -7,12 +7,13 @@ import { type CollectedSlot } from "@/data/pokemon"
 import { useTranslation } from "@/i18n"
 
 interface GoogleSheetsTabProps {
-  userId: string
+  userId?: string | null
   onUpdateCollection: (newCollected: Record<number, CollectedSlot>) => void
   setLoading: (loading: boolean) => void
   loading: boolean
   setStatusMessage: (msg: { type: "success" | "error"; text: string } | null) => void
 }
+
 
 export const GoogleSheetsTab: React.FC<GoogleSheetsTabProps> = ({
   userId,
@@ -27,7 +28,9 @@ export const GoogleSheetsTab: React.FC<GoogleSheetsTabProps> = ({
   const [pastedRows, setPastedRows] = useState("")
 
   const refreshCollectionFromServer = async () => {
+    if (!userId) return
     const colRes = await fetch(`/api/collection?userId=${encodeURIComponent(userId)}`)
+
     const colData = await colRes.json()
     if (colData.items) {
       const loaded: Record<number, CollectedSlot> = {}
@@ -64,12 +67,13 @@ export const GoogleSheetsTab: React.FC<GoogleSheetsTabProps> = ({
 
     setLoading(true)
     setStatusMessage(null)
+    const effectiveUserId = userId || "guest"
     try {
       const res = await fetch("/api/collection/seed-sheet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId,
+          userId: effectiveUserId,
           spreadsheetId,
           accessToken: sheetToken.trim() || undefined,
         }),
@@ -103,6 +107,7 @@ export const GoogleSheetsTab: React.FC<GoogleSheetsTabProps> = ({
 
     setLoading(true)
     setStatusMessage(null)
+    const effectiveUserId = userId || "guest"
     try {
       const lines = pastedRows.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0)
       const rawRows = lines.map((l) => l.split(/[\t,]/).map((p) => p.trim()))
@@ -110,8 +115,9 @@ export const GoogleSheetsTab: React.FC<GoogleSheetsTabProps> = ({
       const res = await fetch("/api/collection/seed-rows", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, rows: rawRows }),
+        body: JSON.stringify({ userId: effectiveUserId, rows: rawRows }),
       })
+
 
       const data = await res.json()
       if (res.ok && data.success) {

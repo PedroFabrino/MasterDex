@@ -24,7 +24,9 @@ export interface CollectorProfile {
   name: string
   avatarUrl?: string | null
   seededFromSheet?: boolean
+  sessionToken?: string
 }
+
 
 interface AuthModalProps {
   open: boolean

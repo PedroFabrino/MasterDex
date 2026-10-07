@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react"
-import { type CollectedSlot, type TcgCard } from "@/data/pokemon"
+import { POKEMON, type CollectedSlot, type TcgCard } from "@/data/pokemon"
 import { type CollectorProfile } from "@/components/auth/AuthModal"
+import { mergeCloudAndLocalCollection } from "@/lib/collectionMerge"
 
 export interface UseCollectionOptions {
   currentUser: CollectorProfile | null
@@ -11,9 +12,7 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
     try {
       const saved = localStorage.getItem("masterdex_collected")
       if (saved) return JSON.parse(saved)
-    } catch {
-      // Ignore parse errors
-    }
+    } catch {}
     return {}
   })
 
@@ -78,7 +77,10 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
       if (!currentUser) return
       fetch(`/api/collection/${pokemonId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(currentUser.sessionToken ? { Authorization: `Bearer ${currentUser.sessionToken}` } : {}),
+        },
         body: JSON.stringify({
           userId: currentUser.id,
           collected: opts.collected,
@@ -90,6 +92,48 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
       }).catch(() => {})
     },
     [currentUser]
+  )
+
+  const mergeAndSyncUser = useCallback(
+    async (profile: CollectorProfile) => {
+      try {
+        const res = await fetch(`/api/collection?userId=${encodeURIComponent(profile.id)}`)
+        if (!res.ok) return
+        const data = (await res.json()) as any
+        if (!data?.items) return
+
+        let slotsToBatchSync: Array<{ pokemonId: number; slot: CollectedSlot }> = []
+        setCollected((prevLocal) => {
+          const { merged, slotsToSync } = mergeCloudAndLocalCollection(data.items, prevLocal)
+          slotsToBatchSync = slotsToSync
+          return merged
+        })
+
+        if (slotsToBatchSync.length > 0) {
+          const entries = slotsToBatchSync.map(({ pokemonId, slot }) => ({
+            pokedexId: pokemonId,
+            collected: true,
+            cardId: slot.tcgCard?.id ?? null,
+            cardName: slot.tcgCard?.name ?? null,
+            cardImageUrl: slot.tcgCard?.imageUrl ?? null,
+            cardLanguage: slot.cardLanguage ?? slot.tcgCard?.language ?? null,
+          }))
+
+          await fetch("/api/collection/batch", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(profile.sessionToken ? { Authorization: `Bearer ${profile.sessionToken}` } : {}),
+            },
+            body: JSON.stringify({
+              userId: profile.id,
+              entries,
+            }),
+          }).catch(() => {})
+        }
+      } catch {}
+    },
+    []
   )
 
   const markSlotCollected = useCallback(
@@ -133,6 +177,12 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
     [syncSlotToBackend]
   )
 
+  const totalCollected = POKEMON.filter((p) => collected[p.id]).length
+  const totalCards = Object.values(collected).filter((s) => s?.tcgCard != null).length
+  const rawPct = (totalCollected / POKEMON.length) * 100
+  const totalPct =
+    totalCollected === 0 ? "0" : totalCollected === POKEMON.length ? "100" : rawPct.toFixed(1)
+
   return {
     collected,
     setCollected,
@@ -140,5 +190,9 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
     handleSelectCard,
     handleUnmark,
     syncSlotToBackend,
+    mergeAndSyncUser,
+    totalCollected,
+    totalCards,
+    totalPct,
   }
 }

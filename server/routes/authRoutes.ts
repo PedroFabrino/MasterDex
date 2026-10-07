@@ -8,9 +8,10 @@ import { verifyGoogleIdToken, createSessionToken } from '../services/authService
 export const authRoutes = new Hono()
 
 const googleAuthSchema = z.object({
-  credential: z.string({ required_error: 'Google credential is required' }).min(1),
+  credential: z.string().min(1),
   accessToken: z.string().optional(),
 })
+
 
 // POST /api/auth/google
 authRoutes.post('/google', async (c) => {
