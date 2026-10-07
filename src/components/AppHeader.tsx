@@ -1,4 +1,4 @@
-import { BookOpen, Sparkles, PanelLeft, TrendingUp, Database, Globe, Settings } from "lucide-react"
+import { BookOpen, Sparkles, PanelLeft, TrendingUp, Database, Globe, Settings, Scan } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -17,6 +17,7 @@ interface AppHeaderProps {
   totalPct: string | number
   onOpenImportModal: () => void
   onOpenSettingsModal?: () => void
+  onOpenScannerModal?: () => void
   currentUser: CollectorProfile | null
   onOpenAuthModal: () => void
   onSignInWithGoogle?: () => void
@@ -35,6 +36,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   totalPct,
   onOpenImportModal,
   onOpenSettingsModal,
+  onOpenScannerModal,
   currentUser,
   onOpenAuthModal,
   onSignInWithGoogle,
@@ -138,6 +140,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <Settings className="size-3.5 text-violet-400" />
             <span className="hidden lg:inline">{t("settings.menuButton")}</span>
           </Button>
+
+          {/* Visual Binder Scanner Button */}
+          {appMode === "binder" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenScannerModal}
+              className="h-8 border-violet-800/80 bg-violet-950/40 hover:bg-violet-900/60 text-violet-200 text-xs px-2.5 flex items-center gap-1.5 cursor-pointer shadow-sm"
+              title={t("scanner.title")}
+            >
+              <Scan className="size-3.5 text-violet-400" />
+              <span className="hidden sm:inline">{t("scanner.scanBinderButton")}</span>
+            </Button>
+          )}
 
           {/* Species Progress */}
           <div

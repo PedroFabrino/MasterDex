@@ -242,5 +242,51 @@ export interface TranslationDictionary {
     langJa: string
     menuButton: string
   }
+  scanner: {
+    title: string
+    description: string
+    scanBinderButton: string
+    layoutSelectorLabel: string
+    layout2x2: string
+    layout3x3: string
+    layout4x3: string
+    cameraPermissionPrompt: string
+    cameraNotAvailable: string
+    startCamera: string
+    stopCamera: string
+    tapToSnap: string
+    autoSnapEnabled: string
+    autoSnapDisabled: string
+    uploadPhotos: string
+    uploadVideo: string
+    processingVideo: string
+    capturePage: string
+    scannedPagesCount: string
+    pagesScanned: string
+    noPagesScanned: string
+    removePage: string
+    clearQueue: string
+    reviewPagesAction: string
+    alignGuideHint: string
+  }
+  staging: {
+    title: string
+    description: string
+    scanningPages: string
+    pageIndicator: string
+    emptySlot: string
+    confidenceLabel: string
+    highConfidence: string
+    lowConfidence: string
+    editSlot: string
+    correctSpecies: string
+    searchPokemonPlaceholder: string
+    confirmAllButton: string
+    savingCards: string
+    syncSuccess: string
+    slotsUpdated: string
+    reScanButton: string
+    noCardsDetected: string
+  }
 }
 

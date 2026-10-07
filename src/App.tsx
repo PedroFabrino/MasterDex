@@ -5,6 +5,7 @@ import { BinderPageView } from "@/components/BinderPageView"
 import { BinderSearchBar } from "@/components/BinderSearchBar"
 import { BinderSpine } from "@/components/BinderSpine"
 import { type CollectorProfile } from "@/components/auth/AuthModal"
+import { type CapturedBinderPage } from "@/components/scanner/BinderScannerModal"
 import { AppHeader } from "@/components/AppHeader"
 import { BinderLegend } from "@/components/BinderLegend"
 import { TcgInvestorDashboard } from "@/components/investor/TcgInvestorDashboard"
@@ -47,6 +48,8 @@ export function App() {
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
+  const [scannerModalOpen, setScannerModalOpen] = useState(false)
+  const [stagedPages, setStagedPages] = useState<CapturedBinderPage[]>([])
   const [highlightedPokemonId, setHighlightedPokemonId] = useState<number | null>(null)
 
   const binderSearchInputRef = useRef<HTMLInputElement>(null)
@@ -137,6 +140,7 @@ export function App() {
             totalPct={totalPct}
             onOpenImportModal={() => setImportModalOpen(true)}
             onOpenSettingsModal={() => setSettingsModalOpen(true)}
+            onOpenScannerModal={() => setScannerModalOpen(true)}
             currentUser={currentUser}
             onOpenAuthModal={() => setAuthModalOpen(true)}
             onSignInWithGoogle={triggerGoogleSignIn}
@@ -196,6 +200,11 @@ export function App() {
         settingsModalOpen={settingsModalOpen}
         onCloseSettingsModal={() => setSettingsModalOpen(false)}
         onOpenSettingsModal={() => setSettingsModalOpen(true)}
+        scannerModalOpen={scannerModalOpen}
+        onCloseScannerModal={() => setScannerModalOpen(false)}
+        onProceedToReview={(pages) => {
+          setStagedPages(pages)
+        }}
       />
     </SidebarProvider>
   )

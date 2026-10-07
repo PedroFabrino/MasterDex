@@ -4,6 +4,7 @@ import { CardSelectorModal } from "@/components/CardSelectorModal"
 import { ImportBackupModal } from "@/components/ImportBackupModal"
 import { AuthModal, type CollectorProfile } from "@/components/auth/AuthModal"
 import { CollectorSettingsModal } from "@/components/settings/CollectorSettingsModal"
+import { BinderScannerModal, type CapturedBinderPage } from "@/components/scanner/BinderScannerModal"
 
 interface AppModalsProps {
   modalPokemon: Pokemon | null
@@ -24,6 +25,9 @@ interface AppModalsProps {
   settingsModalOpen: boolean
   onCloseSettingsModal: () => void
   onOpenSettingsModal?: () => void
+  scannerModalOpen: boolean
+  onCloseScannerModal: () => void
+  onProceedToReview: (pages: CapturedBinderPage[]) => void
 }
 
 export const AppModals: React.FC<AppModalsProps> = ({
@@ -45,6 +49,9 @@ export const AppModals: React.FC<AppModalsProps> = ({
   settingsModalOpen,
   onCloseSettingsModal,
   onOpenSettingsModal,
+  scannerModalOpen,
+  onCloseScannerModal,
+  onProceedToReview,
 }) => (
   <>
     <CardSelectorModal
@@ -75,6 +82,11 @@ export const AppModals: React.FC<AppModalsProps> = ({
       open={settingsModalOpen}
       onClose={onCloseSettingsModal}
       userId={currentUser?.id}
+    />
+    <BinderScannerModal
+      open={scannerModalOpen}
+      onClose={onCloseScannerModal}
+      onProceedToReview={onProceedToReview}
     />
   </>
 )
