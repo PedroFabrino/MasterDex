@@ -11,6 +11,7 @@ const updateCollectionSchema = z.object({
   cardId: z.string().nullable().optional(),
   cardName: z.string().nullable().optional(),
   cardImageUrl: z.string().nullable().optional(),
+  cardLanguage: z.string().nullable().optional(),
 })
 
 const reseedSchema = z.object({
@@ -21,6 +22,29 @@ const reseedSchema = z.object({
 const seedRowsSchema = z.object({
   userId: z.string().min(1),
   rows: z.array(z.array(z.string())),
+})
+
+const seedSheetSchema = z.object({
+  userId: z.string().min(1),
+  spreadsheetId: z.string().min(1),
+  accessToken: z.string().optional(),
+})
+
+const batchSyncSchema = z.object({
+  userId: z.string().min(1),
+  entries: z
+    .array(
+      z.object({
+        pokedexId: z.number().int().positive(),
+        collected: z.boolean(),
+        cardId: z.string().nullable().optional(),
+        cardName: z.string().nullable().optional(),
+        cardImageUrl: z.string().nullable().optional(),
+        cardLanguage: z.string().nullable().optional(),
+      })
+    )
+    .optional(),
+  csv: z.string().optional(),
 })
 
 // GET /api/collection
@@ -35,7 +59,13 @@ collectionRoutes.get('/', async (c) => {
     const statusMap: Record<number, boolean> = {}
     const itemsMap: Record<
       number,
-      { collected: boolean; cardId?: string | null; cardName?: string | null; cardImageUrl?: string | null }
+      {
+        collected: boolean
+        cardId?: string | null
+        cardName?: string | null
+        cardImageUrl?: string | null
+        cardLanguage?: string | null
+      }
     > = {}
 
     for (const item of list) {
@@ -45,6 +75,7 @@ collectionRoutes.get('/', async (c) => {
         cardId: item.cardId,
         cardName: item.cardName,
         cardImageUrl: item.cardImageUrl,
+        cardLanguage: item.cardLanguage ?? 'en',
       }
     }
     return c.json({
@@ -79,6 +110,7 @@ collectionRoutes.patch('/:pokemonId', async (c) => {
         cardId: parsed.data.cardId,
         cardName: parsed.data.cardName,
         cardImageUrl: parsed.data.cardImageUrl,
+        cardLanguage: parsed.data.cardLanguage,
       }
     )
 
@@ -132,5 +164,106 @@ collectionRoutes.post('/seed-rows', async (c) => {
     })
   } catch (error: any) {
     return c.json({ error: error?.message || 'Failed to seed rows' }, 500)
+  }
+})
+
+// POST /api/collection/seed-sheet
+collectionRoutes.post('/seed-sheet', async (c) => {
+  try {
+    const body = await c.req.json()
+    const parsed = seedSheetSchema.safeParse(body)
+    if (!parsed.success) {
+      return c.json({ error: 'Invalid seed-sheet payload', details: parsed.error.issues }, 400)
+    }
+
+    const result = await sheetSeedService.seedFromSpreadsheetId(
+      parsed.data.userId,
+      parsed.data.spreadsheetId,
+      parsed.data.accessToken
+    )
+
+    return c.json({
+      success: result.seeded,
+      seededCount: result.count,
+      totalProcessed: result.totalProcessed,
+    })
+  } catch (error: any) {
+    return c.json({ error: error?.message || 'Failed to seed from sheet' }, 500)
+  }
+})
+
+// POST /api/collection/batch
+collectionRoutes.post('/batch', async (c) => {
+  try {
+    const body = await c.req.json()
+    const parsed = batchSyncSchema.safeParse(body)
+    if (!parsed.success) {
+      return c.json({ error: 'Invalid batch sync payload', details: parsed.error.issues }, 400)
+    }
+
+    let entries: Array<{
+      pokedexId: number
+      collected: boolean
+      cardId?: string | null
+      cardName?: string | null
+      cardImageUrl?: string | null
+      cardLanguage?: string | null
+    }> = []
+
+    if (parsed.data.entries) {
+      entries = parsed.data.entries
+    } else if (parsed.data.csv) {
+      entries = sheetSeedService.parseCsv(parsed.data.csv)
+    }
+
+    await collectorRepository.batchUpsertUserPokemon(parsed.data.userId, entries)
+
+    const collectedCount = entries.filter((e) => e.collected).length
+    return c.json({
+      success: true,
+      syncedCount: entries.length,
+      collectedCount,
+    })
+  } catch (error: any) {
+    return c.json({ error: error?.message || 'Failed to batch sync collection' }, 500)
+  }
+})
+
+// GET /api/collection/export
+collectionRoutes.get('/export', async (c) => {
+  const userId = c.req.query('userId')
+  const format = c.req.query('format') || 'json'
+
+  if (!userId) {
+    return c.json({ error: 'userId is required' }, 400)
+  }
+
+  try {
+    const list = await collectorRepository.getUserCollection(userId)
+
+    if (format === 'csv') {
+      const csv = sheetSeedService.formatCsv(
+        list.map((item) => ({
+          pokedexId: item.pokedexId,
+          collected: item.collected,
+          cardId: item.cardId,
+          cardName: item.cardName,
+          cardImageUrl: item.cardImageUrl,
+        }))
+      )
+      return c.text(csv, 200, {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="masterdex-collection-${userId}.csv"`,
+      })
+    }
+
+    return c.json({
+      userId,
+      exportedAt: new Date().toISOString(),
+      count: list.filter((l) => l.collected).length,
+      items: list,
+    })
+  } catch (error: any) {
+    return c.json({ error: error?.message || 'Failed to export collection' }, 500)
   }
 })

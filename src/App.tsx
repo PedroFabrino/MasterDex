@@ -1,325 +1,283 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import {
   POKEMON,
-  TCG_CARDS,
+  DEX_REGIONS,
   getPagePokemon,
   getTotalPages,
   getRegionForPage,
   type Pokemon,
-  type TcgCard,
-  type CollectedSlot,
 } from "@/data/pokemon"
-import { CardSlot } from "@/components/CardSlot"
 import { CardSelectorModal } from "@/components/CardSelectorModal"
 import { BinderSidebar } from "@/components/BinderSidebar"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Separator } from "@/components/ui/separator"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  ChevronLeft,
-  ChevronRight,
-  BookOpen,
-  Sparkles,
-  PanelLeft,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
-
-const INITIAL_COLLECTED: Record<number, CollectedSlot> = {
-  6: { pokemonId: 6, tcgCard: TCG_CARDS[6][0] },
-  9: { pokemonId: 9, tcgCard: TCG_CARDS[9][0] },
-  25: { pokemonId: 25, tcgCard: TCG_CARDS[25][0] },
-  1: { pokemonId: 1, tcgCard: null },
-  4: { pokemonId: 4, tcgCard: null },
-  7: { pokemonId: 7, tcgCard: null },
-}
+import { BinderPageView } from "@/components/BinderPageView"
+import { BinderSearchBar } from "@/components/BinderSearchBar"
+import { ImportBackupModal } from "@/components/ImportBackupModal"
+import { AuthModal, type CollectorProfile } from "@/components/auth/AuthModal"
+import { AppHeader } from "@/components/AppHeader"
+import { BinderLegend } from "@/components/BinderLegend"
+import { TcgInvestorDashboard } from "@/components/investor/TcgInvestorDashboard"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { useGoogleAuth } from "@/hooks/useGoogleAuth"
+import { useCollection } from "@/hooks/useCollection"
+import { mergeCloudAndLocalCollection } from "@/lib/collectionMerge"
 
 export function App() {
-  const [currentPage, setCurrentPage] = useState(1)
-  const [collected, setCollected] = useState<Record<number, CollectedSlot>>(() => {
-    try {
-      const saved = localStorage.getItem("masterdex_collected")
-      if (saved) return JSON.parse(saved)
-    } catch {
-      // Ignore parse errors
+  const [appMode, setAppMode] = useState<"binder" | "investor">(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#investor") {
+      return "investor"
     }
-    return INITIAL_COLLECTED
+    return "binder"
   })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [selectedRegionId, setSelectedRegionId] = useState<string>("kanto")
+  const [currentUser, setCurrentUser] = useState<CollectorProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem("masterdex_user")
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return null
+  })
+
+  const {
+    collected,
+    setCollected,
+    markSlotCollected,
+    handleSelectCard,
+    handleUnmark,
+  } = useCollection({ currentUser })
+
   const [modalPokemon, setModalPokemon] = useState<Pokemon | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [highlightedPokemonId, setHighlightedPokemonId] = useState<number | null>(null)
 
-  // Persist collection updates to localStorage
+  const binderSearchInputRef = useRef<HTMLInputElement>(null)
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Context-aware Ctrl+K shortcut
   useEffect(() => {
-    try {
-      localStorage.setItem("masterdex_collected", JSON.stringify(collected))
-    } catch {
-      // Ignore quota errors
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        if (appMode === "binder") {
+          binderSearchInputRef.current?.focus()
+        } else {
+          const investorInput = document.querySelector<HTMLInputElement>(
+            "input[placeholder*='expansão'], input[placeholder*='expansion'], input[placeholder*='set']"
+          )
+          investorInput?.focus()
+        }
+      }
     }
-  }, [collected])
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [appMode])
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+    }
+  }, [])
+
+  // Persist mode to hash
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.location.hash = appMode === "investor" ? "investor" : "binder"
+    }
+  }, [appMode])
+
+  // Persist current user to localStorage
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem("masterdex_user", JSON.stringify(currentUser))
+    } else {
+      localStorage.removeItem("masterdex_user")
+    }
+  }, [currentUser])
+
+  const handleLogout = useCallback(() => {
+    try {
+      localStorage.setItem("masterdex_logged_out", "true")
+      localStorage.removeItem("masterdex_user")
+      localStorage.removeItem("masterdex_collected")
+    } catch {}
+    setCurrentUser(null)
+    setCollected({})
+  }, [setCollected])
+
+  const handleLoginSuccess = useCallback(
+    async (profile: CollectorProfile) => {
+      try {
+        localStorage.removeItem("masterdex_logged_out")
+        localStorage.setItem("masterdex_user", JSON.stringify(profile))
+      } catch {}
+      setCurrentUser(profile)
+
+      try {
+        const res = await fetch(`/api/collection?userId=${encodeURIComponent(profile.id)}`)
+        if (res.ok) {
+          const data = (await res.json()) as any
+          if (data?.items) {
+            setCollected((prevLocal) => {
+              const { merged, slotsToSync } = mergeCloudAndLocalCollection(data.items, prevLocal)
+              for (const { pokemonId, slot } of slotsToSync) {
+                fetch(`/api/collection/${pokemonId}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    userId: profile.id,
+                    collected: true,
+                    cardId: slot.tcgCard?.id ?? null,
+                    cardName: slot.tcgCard?.name ?? null,
+                    cardImageUrl: slot.tcgCard?.imageUrl ?? null,
+                    cardLanguage: slot.cardLanguage ?? slot.tcgCard?.language ?? null,
+                  }),
+                }).catch(() => {})
+              }
+              return merged
+            })
+          }
+        }
+      } catch {}
+    },
+    [setCollected]
+  )
+
+  const {
+    isGsiLoaded,
+    isAuthenticating,
+    triggerGoogleSignIn,
+    renderGoogleButton,
+  } = useGoogleAuth({
+    onLoginSuccess: handleLoginSuccess,
+  })
 
   const totalPages = getTotalPages()
   const pagePokemon = getPagePokemon(currentPage)
 
-  const pageCollectedCount = pagePokemon.filter((p) => collected[p.id]).length
-  const progressPct = Math.round((pageCollectedCount / 16) * 100)
-
   const totalCollected = POKEMON.filter((p) => collected[p.id]).length
-  const totalPct = Math.round((totalCollected / POKEMON.length) * 100)
+  const totalCards = Object.values(collected).filter((s) => s?.tcgCard != null).length
+  const rawPct = (totalCollected / POKEMON.length) * 100
+  const totalPct =
+    totalCollected === 0 ? "0" : totalCollected === POKEMON.length ? "100" : rawPct.toFixed(1)
 
-  const firstId = pagePokemon[0]?.id ?? 0
-  const lastId = pagePokemon[pagePokemon.length - 1]?.id ?? 0
-  const firstName = pagePokemon[0]?.name ?? ""
-  const lastName = pagePokemon[pagePokemon.length - 1]?.name ?? ""
-  const currentRegion = getRegionForPage(currentPage)
+  const activeRegion = DEX_REGIONS.find((r) => r.id === selectedRegionId)
+  const currentRegion =
+    activeRegion && currentPage >= activeRegion.pageStart && currentPage <= activeRegion.pageEnd
+      ? activeRegion
+      : getRegionForPage(currentPage)
 
-  const jumpToPage = (page: number) => {
-    setCurrentPage(Math.min(totalPages, Math.max(1, page)))
-  }
+  const jumpToPage = useCallback(
+    (page: number, regionId?: string) => {
+      const targetPage = Math.min(totalPages, Math.max(1, page))
+      setCurrentPage(targetPage)
+      if (regionId) {
+        setSelectedRegionId(regionId)
+      } else {
+        const reg = DEX_REGIONS.find((r) => r.id === selectedRegionId)
+        if (!reg || targetPage < reg.pageStart || targetPage > reg.pageEnd) {
+          setSelectedRegionId(getRegionForPage(targetPage).id)
+        }
+      }
+    },
+    [totalPages, selectedRegionId]
+  )
+
+  const handleSearchSelectPokemon = useCallback(
+    (pokemon: Pokemon) => {
+      const targetPage = Math.floor((pokemon.id - 1) / 16) + 1
+      jumpToPage(targetPage)
+      setHighlightedPokemonId(pokemon.id)
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+      highlightTimerRef.current = setTimeout(() => {
+        setHighlightedPokemonId(null)
+      }, 2500)
+    },
+    [jumpToPage]
+  )
 
   const handleSlotClick = useCallback(
     (pokemon: Pokemon) => {
+      setHighlightedPokemonId(null)
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
       if (!collected[pokemon.id]) {
-        setCollected((prev) => ({
-          ...prev,
-          [pokemon.id]: { pokemonId: pokemon.id, tcgCard: null },
-        }))
+        markSlotCollected(pokemon.id)
       }
       setModalPokemon(pokemon)
       setModalOpen(true)
     },
-    [collected]
+    [collected, markSlotCollected]
   )
 
-  const handleSelectCard = useCallback((pokemonId: number, card: TcgCard | null) => {
-    setCollected((prev) => ({
-      ...prev,
-      [pokemonId]: { pokemonId, tcgCard: card },
-    }))
-  }, [])
-
-  const handleUnmark = useCallback((pokemonId: number) => {
-    setCollected((prev) => {
-      const next = { ...prev }
-      delete next[pokemonId]
-      return next
-    })
-  }, [])
-
-  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1)
-
   return (
-    <SidebarProvider defaultOpen>
-      <BinderSidebar
-        currentPage={currentPage}
-        currentRegion={currentRegion}
-        onJumpToPage={jumpToPage}
-      />
+    <SidebarProvider defaultOpen={appMode === "binder"}>
+      {appMode === "binder" && (
+        <BinderSidebar
+          currentPage={currentPage}
+          currentRegion={currentRegion}
+          onJumpToPage={jumpToPage}
+        />
+      )}
 
       <SidebarInset className="bg-zinc-950 text-zinc-100">
         <div className="min-h-svh">
-          {/* Global top bar */}
-          <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/60">
-            <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <SidebarTrigger
-                  className="text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                  aria-label="Toggle binder navigation"
-                >
-                  <PanelLeft className="size-4" />
-                </SidebarTrigger>
-                <div className="hidden sm:block h-5 w-px bg-zinc-800" />
-                {/* Pokéball accent */}
-                <div className="relative size-9 shrink-0">
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-b from-red-500 to-red-600 shadow-lg shadow-red-950/50" />
-                  <div className="absolute inset-0 rounded-full border-2 border-zinc-900/60" />
-                  <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-zinc-900/70 -translate-y-1/2" />
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-2.5 rounded-full bg-zinc-100 border-2 border-zinc-900/50 shadow-sm" />
-                </div>
-                <div>
-                  <h1 className="text-base font-bold tracking-tight text-zinc-100 leading-none">
-                    PokéBinder
-                  </h1>
-                  <p className="text-xs text-zinc-500 leading-none mt-0.5">
-                    {currentRegion.name} Collection Tracker
-                  </p>
-                </div>
+          <AppHeader
+            appMode={appMode}
+            onSetAppMode={setAppMode}
+            currentRegionName={currentRegion.name}
+            totalCollected={totalCollected}
+            totalCards={totalCards}
+            totalPokemonCount={POKEMON.length}
+            totalPct={totalPct}
+            onOpenImportModal={() => setImportModalOpen(true)}
+            currentUser={currentUser}
+            onOpenAuthModal={() => setAuthModalOpen(true)}
+            onSignInWithGoogle={triggerGoogleSignIn}
+            isAuthenticating={isAuthenticating}
+            renderGoogleButton={renderGoogleButton}
+            isGsiLoaded={isGsiLoaded}
+          />
+
+          {/* Active Mode View */}
+          {appMode === "investor" ? (
+            <TcgInvestorDashboard userId={currentUser?.id || "pedro"} />
+          ) : (
+            <main className="max-w-5xl mx-auto px-4 py-6">
+              {/* Binder Search Bar Toolbar */}
+              <div className="mb-4">
+                <BinderSearchBar
+                  inputRef={binderSearchInputRef}
+                  collected={collected}
+                  onSelectPokemon={handleSearchSelectPokemon}
+                />
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="hidden sm:flex items-center gap-2 bg-zinc-900/80 rounded-lg px-3 py-1.5 border border-zinc-800/60">
-                  <Sparkles className="size-3.5 text-amber-400 shrink-0" />
-                  <span className="text-xs text-zinc-300 font-medium">
-                    {totalCollected}/{POKEMON.length}
-                  </span>
-                  <span className="text-xs text-zinc-500">collected</span>
-                </div>
-                <Badge
-                  variant="outline"
-                  className="border-violet-700/60 text-violet-300 bg-violet-950/30 text-xs"
-                >
-                  {totalPct}% complete
-                </Badge>
-              </div>
-            </div>
-          </header>
-
-          <main className="max-w-5xl mx-auto px-4 py-6">
-            {/* Binder wrapper */}
-            <div className="relative">
-              {/* Spine rings effect */}
-              <div className="absolute -left-3 top-8 bottom-8 w-1.5 flex flex-col justify-evenly pointer-events-none z-10">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="size-3 rounded-full bg-zinc-600 border border-zinc-500/60 shadow-inner"
-                  />
-                ))}
-              </div>
-
-              {/* Binder body */}
-              <div className="rounded-2xl border border-zinc-700/60 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 shadow-2xl shadow-black/60 overflow-hidden">
-                {/* Page header */}
-                <div className="bg-zinc-800/60 border-b border-zinc-700/50 px-6 py-4">
-                  <div className="flex flex-col sm:row sm:items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-sm font-bold text-zinc-100 leading-tight">
-                        Page {currentPage}: {currentRegion.name} ({firstName} – {lastName})
-                      </h2>
-                      <p className="text-xs text-zinc-400 mt-0.5 font-mono">
-                        #{String(firstId).padStart(3, "0")} – #{String(lastId).padStart(3, "0")}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 min-w-0 sm:min-w-[200px]">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-zinc-400">
-                            {pageCollectedCount}/16 Collected
-                          </span>
-                          <span
-                            className={cn(
-                              "text-xs font-bold",
-                              progressPct === 100
-                                ? "text-emerald-400"
-                                : progressPct >= 50
-                                ? "text-amber-400"
-                                : "text-zinc-400"
-                            )}
-                          >
-                            {progressPct}%
-                          </span>
-                        </div>
-                        <Progress
-                          value={progressPct}
-                          className="h-1.5 bg-zinc-700/60 [&>[data-slot=progress-indicator]]:bg-gradient-to-r [&>[data-slot=progress-indicator]]:from-violet-500 [&>[data-slot=progress-indicator]]:to-emerald-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
+              <div className="relative">
+                <div className="absolute -left-3 top-8 bottom-8 w-1.5 flex flex-col justify-evenly pointer-events-none z-10">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="size-3 rounded-full bg-zinc-600 border border-zinc-500/60 shadow-inner"
+                    />
+                  ))}
                 </div>
 
-                {/* 4x4 grid */}
-                <div className="p-5 sm:p-6">
-                  <div className="grid grid-cols-4 gap-3 sm:gap-3.5">
-                    {pagePokemon.map((pokemon) => (
-                      <CardSlot
-                        key={pokemon.id}
-                        pokemon={pokemon}
-                        slot={collected[pokemon.id]}
-                        onClick={() => handleSlotClick(pokemon)}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <Separator className="bg-zinc-700/40" />
-
-                {/* Pagination */}
-                <div className="px-6 py-4 flex items-center justify-between gap-4 bg-zinc-800/30">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((p) => p - 1)}
-                    className="border-zinc-700 bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 disabled:opacity-30"
-                  >
-                    <ChevronLeft className="size-4" />
-                    <span className="hidden sm:inline">Previous</span>
-                  </Button>
-
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="size-4 text-zinc-500 shrink-0" />
-                    <Select
-                      value={String(currentPage)}
-                      onValueChange={(v) => setCurrentPage(Number(v))}
-                    >
-                      <SelectTrigger className="w-28 h-8 bg-zinc-800/60 border-zinc-700 text-zinc-300 text-sm focus:ring-zinc-500/30 focus:border-zinc-500">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-800 border-zinc-700">
-                        {pageNumbers.map((n) => {
-                          const pp = getPagePokemon(n)
-                          const f = pp[0]?.name ?? ""
-                          return (
-                            <SelectItem
-                              key={n}
-                              value={String(n)}
-                              className="text-zinc-300 focus:bg-zinc-700 focus:text-zinc-100"
-                            >
-                              Page {n} — {f}
-                            </SelectItem>
-                          )
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <span className="text-xs text-zinc-500">of {totalPages}</span>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage((p) => p + 1)}
-                    className="border-zinc-700 bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 disabled:opacity-30"
-                  >
-                    <span className="hidden sm:inline">Next</span>
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
+                <BinderPageView
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  currentRegion={currentRegion}
+                  pagePokemon={pagePokemon}
+                  collected={collected}
+                  highlightedPokemonId={highlightedPokemonId}
+                  onSlotClick={handleSlotClick}
+                  onJumpToPage={jumpToPage}
+                />
               </div>
-            </div>
 
-            {/* Legend */}
-            <div className="mt-6 flex flex-wrap items-center gap-4 justify-center text-xs text-zinc-500">
-              <div className="flex items-center gap-1.5">
-                <div className="size-3 rounded border border-zinc-700 bg-zinc-800" />
-                <span>Empty Slot</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="size-3 rounded border-2 border-emerald-600/50 bg-zinc-800" />
-                <span>Collected (Sprite)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="size-3 rounded bg-gradient-to-br from-violet-500 to-pink-500" />
-                <span>TCG Card</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Sparkles className="size-3 text-amber-400" />
-                <span>Holo / Rare</span>
-              </div>
-            </div>
-          </main>
+              <BinderLegend />
+            </main>
+          )}
         </div>
       </SidebarInset>
 
@@ -330,6 +288,23 @@ export function App() {
         onClose={() => setModalOpen(false)}
         onSelectCard={handleSelectCard}
         onUnmark={handleUnmark}
+      />
+
+      <ImportBackupModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        collected={collected}
+        onUpdateCollection={setCollected}
+        userId={currentUser?.id || "pedro"}
+      />
+
+      <AuthModal
+        open={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onSignInWithGoogle={triggerGoogleSignIn}
+        isAuthenticating={isAuthenticating}
       />
     </SidebarProvider>
   )

@@ -12,11 +12,12 @@ import {
 } from "@/components/ui/sidebar"
 import { Map, BookOpen, Layers3 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useTranslation } from "@/i18n"
 
 interface BinderSidebarProps {
   currentPage: number
   currentRegion: DexRegion
-  onJumpToPage: (page: number) => void
+  onJumpToPage: (page: number, regionId?: string) => void
 }
 
 export function BinderSidebar({
@@ -24,6 +25,8 @@ export function BinderSidebar({
   currentRegion,
   onJumpToPage,
 }: BinderSidebarProps) {
+  const { t } = useTranslation()
+
   return (
     <Sidebar collapsible="icon" className="border-zinc-800/60">
       <SidebarHeader className="border-b border-zinc-800/60 p-3">
@@ -35,8 +38,8 @@ export function BinderSidebar({
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-2 rounded-full bg-zinc-100 border-2 border-zinc-950/50" />
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <p className="text-sm font-bold text-zinc-100 truncate">Binder index</p>
-            <p className="text-[10px] text-zinc-500 truncate">Jump by region or Dex range</p>
+            <p className="text-sm font-bold text-zinc-100 truncate">{t("sidebar.binderIndex")}</p>
+            <p className="text-[10px] text-zinc-500 truncate">{t("sidebar.jumpPrompt")}</p>
           </div>
         </div>
       </SidebarHeader>
@@ -44,7 +47,7 @@ export function BinderSidebar({
         <SidebarGroup className="p-2">
           <SidebarGroupLabel className="text-zinc-500 group-data-[collapsible=icon]:justify-center">
             <Map className="size-3.5" />
-            <span>Regions</span>
+            <span>{t("sidebar.regions")}</span>
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -53,7 +56,7 @@ export function BinderSidebar({
                   <SidebarMenuButton
                     isActive={currentRegion.id === region.id}
                     tooltip={`${region.name} · #${region.dexStart}–#${region.dexEnd}`}
-                    onClick={() => onJumpToPage(region.pageStart)}
+                    onClick={() => onJumpToPage(region.pageStart, region.id)}
                     className="text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 data-[active=true]:bg-violet-950/50 data-[active=true]:text-violet-200"
                   >
                     <Layers3 className={cn("size-4", region.accent)} />
@@ -71,7 +74,7 @@ export function BinderSidebar({
         <SidebarGroup className="p-2 pt-0">
           <SidebarGroupLabel className="text-zinc-500 group-data-[collapsible=icon]:justify-center">
             <BookOpen className="size-3.5" />
-            <span>{currentRegion.name} pages</span>
+            <span>{t("sidebar.regionPages", { region: currentRegion.name })}</span>
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -85,8 +88,12 @@ export function BinderSidebar({
                     <SidebarMenuItem key={page}>
                       <SidebarMenuButton
                         isActive={currentPage === page}
-                        tooltip={`Page ${page} · #${start}–#${end}`}
-                        onClick={() => onJumpToPage(page)}
+                        tooltip={t("sidebar.pageTooltip", {
+                          page,
+                          start: String(start).padStart(3, "0"),
+                          end: String(end).padStart(3, "0"),
+                        })}
+                        onClick={() => onJumpToPage(page, currentRegion.id)}
                         className="text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 data-[active=true]:bg-zinc-800 data-[active=true]:text-zinc-100"
                       >
                         <span className="font-mono text-[10px] w-4">

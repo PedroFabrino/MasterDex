@@ -26,23 +26,38 @@ export class CollectorRepository {
     return rows[0]
   }
 
+  async getProfileByEmail(email: string): Promise<CollectorProfileRecord | undefined> {
+    const rows = await db
+      .select()
+      .from(collectorProfiles)
+      .where(eq(collectorProfiles.email, email))
+      .limit(1)
+    return rows[0]
+  }
+
   async upsertProfile(data: {
     id: string
-    googleId: string
+    googleId?: string | null
     email: string
     name: string
     avatarUrl?: string | null
     seededFromSheet?: boolean
     createdAt?: Date
   }): Promise<CollectorProfileRecord> {
-    const existing = await this.getProfileByGoogleId(data.googleId)
+    const existingById = await this.getProfileById(data.id)
+    const existingByGoogle = data.googleId ? await this.getProfileByGoogleId(data.googleId) : undefined
+    const existingByEmail = await this.getProfileByEmail(data.email)
+    const existing = existingById || existingByGoogle || existingByEmail
+
     if (existing) {
       await db
         .update(collectorProfiles)
         .set({
           name: data.name,
           email: data.email,
-          avatarUrl: data.avatarUrl,
+          avatarUrl: data.avatarUrl !== undefined ? data.avatarUrl : existing.avatarUrl,
+          googleId: data.googleId ?? existing.googleId,
+          seededFromSheet: data.seededFromSheet !== undefined ? data.seededFromSheet : existing.seededFromSheet,
         })
         .where(eq(collectorProfiles.id, existing.id))
       return (await this.getProfileById(existing.id))!
@@ -50,7 +65,7 @@ export class CollectorRepository {
 
     await db.insert(collectorProfiles).values({
       id: data.id,
-      googleId: data.googleId,
+      googleId: data.googleId ?? null,
       email: data.email,
       name: data.name,
       avatarUrl: data.avatarUrl,
@@ -77,6 +92,7 @@ export class CollectorRepository {
           cardId?: string | null
           cardName?: string | null
           cardImageUrl?: string | null
+          cardLanguage?: string | null
         }
   ): Promise<UserPokemonRecord> {
     const existing = await db
@@ -94,6 +110,7 @@ export class CollectorRepository {
       const nextCardId = opts.cardId !== undefined ? opts.cardId : record.cardId
       const nextCardName = opts.cardName !== undefined ? opts.cardName : record.cardName
       const nextCardImageUrl = opts.cardImageUrl !== undefined ? opts.cardImageUrl : record.cardImageUrl
+      const nextCardLanguage = opts.cardLanguage !== undefined ? opts.cardLanguage : (record.cardLanguage ?? 'en')
 
       await db
         .update(userPokemon)
@@ -102,6 +119,7 @@ export class CollectorRepository {
           cardId: nextCardId,
           cardName: nextCardName,
           cardImageUrl: nextCardImageUrl,
+          cardLanguage: nextCardLanguage,
           updatedAt: now,
         })
         .where(eq(userPokemon.id, record.id))
@@ -112,6 +130,7 @@ export class CollectorRepository {
         cardId: nextCardId,
         cardName: nextCardName,
         cardImageUrl: nextCardImageUrl,
+        cardLanguage: nextCardLanguage,
         updatedAt: now,
       }
     }
@@ -124,6 +143,7 @@ export class CollectorRepository {
       cardId: opts.cardId ?? null,
       cardName: opts.cardName ?? null,
       cardImageUrl: opts.cardImageUrl ?? null,
+      cardLanguage: opts.cardLanguage ?? 'en',
       updatedAt: now,
     }
     await db.insert(userPokemon).values(newRecord)
@@ -132,7 +152,14 @@ export class CollectorRepository {
 
   async batchUpsertUserPokemon(
     userId: string,
-    entries: Array<{ pokedexId: number; collected: boolean }>
+    entries: Array<{
+      pokedexId: number
+      collected: boolean
+      cardId?: string | null
+      cardName?: string | null
+      cardImageUrl?: string | null
+      cardLanguage?: string | null
+    }>
   ): Promise<void> {
     const existing = await this.getUserCollection(userId)
     const existingMap = new Map(existing.map((e) => [e.pokedexId, e]))
@@ -145,6 +172,10 @@ export class CollectorRepository {
           .update(userPokemon)
           .set({
             collected: entry.collected,
+            cardId: entry.cardId !== undefined ? entry.cardId : match.cardId,
+            cardName: entry.cardName !== undefined ? entry.cardName : match.cardName,
+            cardImageUrl: entry.cardImageUrl !== undefined ? entry.cardImageUrl : match.cardImageUrl,
+            cardLanguage: entry.cardLanguage !== undefined ? entry.cardLanguage : (match.cardLanguage ?? 'en'),
             updatedAt: now,
           })
           .where(eq(userPokemon.id, match.id))
@@ -154,6 +185,10 @@ export class CollectorRepository {
           userId,
           pokedexId: entry.pokedexId,
           collected: entry.collected,
+          cardId: entry.cardId ?? null,
+          cardName: entry.cardName ?? null,
+          cardImageUrl: entry.cardImageUrl ?? null,
+          cardLanguage: entry.cardLanguage ?? 'en',
           updatedAt: now,
         })
       }
@@ -165,6 +200,51 @@ export class CollectorRepository {
       .update(collectorProfiles)
       .set({ seededFromSheet: true })
       .where(eq(collectorProfiles.id, userId))
+  }
+
+  async getPreferences(userId: string): Promise<{ targetRarity: string; hiddenExpansions: string[] }> {
+    const profile = await this.getProfileById(userId)
+    if (!profile) {
+      return { targetRarity: 'any', hiddenExpansions: [] }
+    }
+    let hiddenExpansions: string[] = []
+    try {
+      hiddenExpansions = JSON.parse(profile.hiddenExpansions || '[]')
+    } catch {
+      hiddenExpansions = []
+    }
+    return {
+      targetRarity: profile.targetRarity || 'any',
+      hiddenExpansions,
+    }
+  }
+
+  async updatePreferences(
+    userId: string,
+    updates: { targetRarity?: string; hiddenExpansions?: string[] }
+  ): Promise<{ targetRarity: string; hiddenExpansions: string[] }> {
+    const profile = await this.getProfileById(userId)
+    if (!profile) {
+      await this.upsertProfile({
+        id: userId,
+        email: `${userId}@local.dev`,
+        name: userId,
+      })
+    }
+
+    const payload: { targetRarity?: string; hiddenExpansions?: string } = {}
+    if (updates.targetRarity !== undefined) {
+      payload.targetRarity = updates.targetRarity
+    }
+    if (updates.hiddenExpansions !== undefined) {
+      payload.hiddenExpansions = JSON.stringify(updates.hiddenExpansions)
+    }
+
+    if (Object.keys(payload).length > 0) {
+      await db.update(collectorProfiles).set(payload).where(eq(collectorProfiles.id, userId))
+    }
+
+    return await this.getPreferences(userId)
   }
 }
 

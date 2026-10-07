@@ -112,4 +112,139 @@ describe('Auth & Collection API Integration', () => {
     expect(verifyBody.collection[7]).toBe(true)
     expect(verifyBody.count).toBe(3)
   })
+
+  describe('Google ID Token Verification & Creator Auto-Seeding (Ticket #11)', () => {
+    const originalFetch = global.fetch
+
+    it('verifies valid Google ID token and creates profile', async () => {
+      const mockTokenData = {
+        sub: 'google-sub-999',
+        email: 'trainer@example.com',
+        name: 'Red Trainer',
+        picture: 'https://example.com/red.png',
+        aud: '8010736190-ni98j51d06uo3n48kp31ia5atbk9iln5.apps.googleusercontent.com',
+        exp: String(Math.floor(Date.now() / 1000) + 3600),
+      }
+
+      global.fetch = async (url: any) => {
+        if (String(url).includes('tokeninfo')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => mockTokenData,
+          } as any
+        }
+        return originalFetch(url)
+      }
+
+      const res = await app.request('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: 'valid-test-credential' }),
+      })
+
+      expect(res.status).toBe(200)
+      const data = (await res.json()) as any
+      expect(data.profile.email).toBe('trainer@example.com')
+      expect(data.profile.name).toBe('Red Trainer')
+      expect(data.seeded).toBe(false)
+    })
+
+    it('auto-seeds 629 cards when verified email matches SEED_ADMIN_EMAIL (pfabrino@gmail.com)', async () => {
+      const mockPedroData = {
+        sub: 'google-pedro-12345',
+        email: 'pfabrino@gmail.com',
+        name: 'Pedro Fabrino',
+        picture: 'https://example.com/pedro.png',
+        aud: '8010736190-ni98j51d06uo3n48kp31ia5atbk9iln5.apps.googleusercontent.com',
+        exp: String(Math.floor(Date.now() / 1000) + 3600),
+      }
+
+      global.fetch = async (url: any) => {
+        if (String(url).includes('tokeninfo')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => mockPedroData,
+          } as any
+        }
+        return originalFetch(url)
+      }
+
+      const res = await app.request('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: 'pedro-test-credential' }),
+      })
+
+      expect(res.status).toBe(200)
+      const data = (await res.json()) as any
+      expect(data.profile.email).toBe('pfabrino@gmail.com')
+      expect(data.seeded).toBe(true)
+      expect(data.seededCount).toBe(629)
+
+      // Verify items exist in collection
+      const collRes = await app.request(`/api/collection?userId=${encodeURIComponent(data.profile.id)}`)
+      const collData = (await collRes.json()) as any
+      expect(collData.count).toBe(629)
+    })
+
+    it('rejects invalid or expired token with 401', async () => {
+      global.fetch = async (url: any) => {
+        if (String(url).includes('tokeninfo')) {
+          return {
+            ok: false,
+            status: 400,
+            json: async () => ({ error: 'invalid_token' }),
+          } as any
+        }
+        return originalFetch(url)
+      }
+
+      const res = await app.request('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: 'bad-token' }),
+      })
+
+      expect(res.status).toBe(401)
+      const data = (await res.json()) as any
+      expect(data.error).toBe('Invalid Google credential token')
+
+      global.fetch = originalFetch
+    })
+
+    it('rejects token with audience mismatch with 401', async () => {
+      const mockMismatchedAudData = {
+        sub: 'google-sub-bad',
+        email: 'bad@example.com',
+        name: 'Bad Aud',
+        aud: 'wrong-client-id.apps.googleusercontent.com',
+        exp: String(Math.floor(Date.now() / 1000) + 3600),
+      }
+
+      global.fetch = async (url: any) => {
+        if (String(url).includes('tokeninfo')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => mockMismatchedAudData,
+          } as any
+        }
+        return originalFetch(url)
+      }
+
+      const res = await app.request('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: 'mismatched-aud-token' }),
+      })
+
+      expect(res.status).toBe(401)
+      const data = (await res.json()) as any
+      expect(data.error).toBe('Token audience mismatch')
+
+      global.fetch = originalFetch
+    })
+  })
 })

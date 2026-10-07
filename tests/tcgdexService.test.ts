@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { tcgdexService } from '../server/services/tcgdexService.js'
 import { app } from '../server/app.js'
 
@@ -47,7 +47,7 @@ describe('TcgDexService query parser', () => {
 })
 
 describe('TcgDexService search and caching', () => {
-  it('returns empty array on blank query', async () => {
+  it('returns empty array on blank query without dexId', async () => {
     const results = await tcgdexService.searchCards('  ')
     expect(results).toEqual([])
   })
@@ -70,10 +70,49 @@ describe('TcgDexService search and caching', () => {
     const results2 = await tcgdexService.searchCards(query, 5)
     expect(results2).toBe(results1)
   })
+
+  it('scopes card searches to dexId, excluding similar named species', async () => {
+    // dexId 151 = Mew. Un-scoped "Mew" would return Mewtwo cards, but dexId=151 must only return Mew.
+    const results = await tcgdexService.searchCards('Mew', 20, 151)
+    expect(results.length).toBeGreaterThan(0)
+
+    for (const card of results) {
+      // Must not contain Mewtwo
+      expect(card.name.toLowerCase()).not.toContain('mewtwo')
+      expect(card.name.toLowerCase()).toContain('mew')
+    }
+  })
+
+  it('strictly filters to exact localId matches when collector number is specified', async () => {
+    // Query specifying exact localId "151" for Mew (e.g. 151-Mew ex from 151 set)
+    const exactResults = await tcgdexService.searchCards('Mew ex 151', 10, 151)
+    if (exactResults.length > 0) {
+      for (const card of exactResults) {
+        expect(card.localId.replace(/^0+/, '')).toBe('151')
+      }
+    }
+
+    // When an exact number does not exist, it falls back to name search
+    const fallbackResults = await tcgdexService.searchCards('Mew ex 9999', 10, 151)
+    expect(fallbackResults.length).toBeGreaterThan(0)
+    for (const card of fallbackResults) {
+      expect(card.name.toLowerCase()).toContain('mew')
+    }
+  })
+
+  it('preserves authentic set total from metadata rather than query string override', async () => {
+    // User searches with query fraction "/999"
+    const results = await tcgdexService.searchCards('Mew 129/999', 5, 151)
+    if (results.length > 0) {
+      const card = results[0]
+      // Set total must NOT be overridden by the query fraction 999
+      expect(card.set.total).not.toBe(999)
+    }
+  })
 })
 
 describe('TCG Cards Search API route', () => {
-  it('returns empty results on empty query param', async () => {
+  it('returns empty results on empty query param without dexId', async () => {
     const res = await app.request('/api/tcg/cards/search?q=')
     expect(res.status).toBe(200)
     const body = (await res.json()) as any
@@ -81,14 +120,87 @@ describe('TCG Cards Search API route', () => {
     expect(body.count).toBe(0)
   })
 
-  it('returns parsed query and card list for valid query', async () => {
-    const res = await app.request('/api/tcg/cards/search?q=Mew%20ex%20129/103&limit=5')
+  it('returns parsed query and card list for valid query with dexId parameter', async () => {
+    const res = await app.request('/api/tcg/cards/search?q=Mew%20ex&dexId=151&limit=5')
     expect(res.status).toBe(200)
     const body = (await res.json()) as any
-    expect(body.query).toBe('Mew ex 129/103')
+    expect(body.query).toBe('Mew ex')
+    expect(body.dexId).toBe(151)
     expect(body.parsed.name).toBe('Mew ex')
-    expect(body.parsed.localId).toBe('129')
-    expect(body.parsed.total).toBe(103)
     expect(Array.isArray(body.results)).toBe(true)
+
+    // Ensure all results are Mew variants and never Mewtwo
+    for (const r of body.results) {
+      expect(r.name.toLowerCase()).not.toContain('mewtwo')
+      expect(r.name.toLowerCase()).toContain('mew')
+    }
+  })
+
+  it('filters results by rarity threshold for plain name queries', async () => {
+    // When querying Mew with rarity=ultra, all returned cards must be at least Ultra Rare (tier 2+)
+    const res = await app.request('/api/tcg/cards/search?q=Mew&dexId=151&rarity=ultra&limit=10')
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as any
+    expect(body.rarity).toBe('ultra')
+    expect(body.results.length).toBeGreaterThan(0)
+    for (const card of body.results) {
+      const rarityInfo = tcgdexService.getCardRarity(card, card.set?.total)
+      expect(rarityInfo.tier).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('bypasses rarity filter when collector number is specified in query', async () => {
+    // Query with collector code "151" but requesting high rarity threshold "secret"
+    // Code bypass must activate, returning the card matching 151 across all rarities
+    const res = await app.request('/api/tcg/cards/search?q=Mew%20151&dexId=151&rarity=secret&limit=10')
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as any
+    expect(body.results.length).toBeGreaterThan(0)
+    // Results should contain the matching localId 151 card even if not secret tier
+    const found = body.results.some((c: any) => c.localId.replace(/^0+/, '') === '151')
+    expect(found).toBe(true)
+  })
+
+  it('keeps CardSelectorModal and CardSelectorGrid within architectural line limits (<= 400)', async () => {
+    const fs = await import('node:fs')
+    const modalPath = new URL('../src/components/CardSelectorModal.tsx', import.meta.url)
+    const gridPath = new URL('../src/components/CardSelectorGrid.tsx', import.meta.url)
+
+    const modalLines = fs.readFileSync(modalPath, 'utf-8').split('\n').length
+    const gridLines = fs.readFileSync(gridPath, 'utf-8').split('\n').length
+
+    expect(modalLines).toBeLessThanOrEqual(400)
+    expect(gridLines).toBeLessThanOrEqual(400)
+  })
+
+  it('supports multi-language search with lang=all and specific lang parameter', async () => {
+    // General search with lang=all
+    const resAll = await app.request('/api/tcg/cards/search?q=Pikachu&dexId=25&lang=all&limit=10')
+    expect(resAll.status).toBe(200)
+    const bodyAll = (await resAll.json()) as any
+    expect(bodyAll.lang).toBe('all')
+    expect(bodyAll.results.length).toBeGreaterThan(0)
+    expect(bodyAll.results[0].language).toBeDefined()
+
+    // Scoped search with lang=ja
+    const resJa = await app.request('/api/tcg/cards/search?q=Pikachu&dexId=25&lang=ja&limit=5')
+    expect(resJa.status).toBe(200)
+    const bodyJa = (await resJa.json()) as any
+    expect(bodyJa.lang).toBe('ja')
+    for (const card of bodyJa.results) {
+      expect(card.language).toBe('ja')
+    }
+  })
+
+  it('keeps tcgdexService and CardPrintLanguageSelector within architectural line limits (<= 400)', async () => {
+    const fs = await import('node:fs')
+    const servicePath = new URL('../server/services/tcgdexService.ts', import.meta.url)
+    const langSelectorPath = new URL('../src/components/CardPrintLanguageSelector.tsx', import.meta.url)
+
+    const serviceLines = fs.readFileSync(servicePath, 'utf-8').split('\n').length
+    const langSelectorLines = fs.readFileSync(langSelectorPath, 'utf-8').split('\n').length
+
+    expect(serviceLines).toBeLessThanOrEqual(400)
+    expect(langSelectorLines).toBeLessThanOrEqual(400)
   })
 })

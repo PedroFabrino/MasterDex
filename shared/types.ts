@@ -10,6 +10,8 @@ export interface Pokemon {
   }
 }
 
+export type ExpansionCategory = 'booster' | 'promo'
+
 export interface Expansion {
   id: string
   name: string
@@ -24,6 +26,10 @@ export interface Expansion {
   totalSecretPoolValue?: number | null
   avgSecretPrice?: number | null
   lastScrapedAt: number
+  logoUrl?: string | null
+  symbolUrl?: string | null
+  collectionGapYield?: number
+  category?: ExpansionCategory
 }
 
 export interface Card {
@@ -36,6 +42,7 @@ export interface Card {
   marketPrice: number
   isSecret: boolean
   types?: string | null
+  pokedexId?: number | null
 }
 
 export interface PriceHistory {
@@ -71,6 +78,7 @@ export interface UserPokemon {
   cardId?: string | null
   cardName?: string | null
   cardImageUrl?: string | null
+  cardLanguage?: string | null
   updatedAt: number
 }
 
@@ -84,5 +92,13 @@ export interface TcgCardSearchResult {
     total?: number
   }
   imageUrl: string
+  thumbnailUrl?: string
   rarity?: string
+  language?: string
 }
+
+export interface CollectorPreferences {
+  targetRarity: string
+  hiddenExpansions: string[]
+}
+

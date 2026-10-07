@@ -1,29 +1,43 @@
+import { useRef, useEffect } from "react"
 import { type Pokemon, type CollectedSlot, type TcgCard } from "@/data/pokemon"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-interface CardSlotProps {
+export interface CardSlotProps {
   pokemon: Pokemon
   slot: CollectedSlot | undefined
   onClick: () => void
+  isHighlighted?: boolean
 }
 
-export function CardSlot({ pokemon, slot, onClick }: CardSlotProps) {
+export function CardSlot({ pokemon, slot, onClick, isHighlighted }: CardSlotProps) {
   const isCollected = !!slot
   const hasTcgCard = slot?.tcgCard != null
+  const slotRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (isHighlighted && slotRef.current) {
+      slotRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    }
+  }, [isHighlighted])
 
   return (
     <button
+      ref={slotRef}
       onClick={onClick}
+      data-highlighted={isHighlighted ? "true" : undefined}
       className={cn(
         "group relative w-full aspect-[2.5/3.5] rounded-xl overflow-hidden transition-all duration-300 cursor-pointer outline-none",
         "focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900",
-        hasTcgCard
-          ? "shadow-lg shadow-black/40"
-          : isCollected
-          ? "border-2 border-emerald-600/50 bg-zinc-800/80 shadow-md shadow-emerald-950/30"
-          : "border border-zinc-700/60 bg-zinc-800/80 hover:border-zinc-500/80 hover:bg-zinc-750"
+        isHighlighted && "ring-4 ring-amber-400 ring-offset-2 ring-offset-zinc-950 shadow-[0_0_25px_rgba(251,191,36,0.7)] animate-pulse z-20 scale-[1.03]",
+        !isHighlighted && (
+          hasTcgCard
+            ? "shadow-lg shadow-black/40"
+            : isCollected
+            ? "border-2 border-emerald-600/50 bg-zinc-800/80 shadow-md shadow-emerald-950/30"
+            : "border border-zinc-700/60 bg-zinc-800/80 hover:border-zinc-500/80 hover:bg-zinc-750"
+        )
       )}
     >
       {hasTcgCard ? (
@@ -50,7 +64,7 @@ export function CardSlot({ pokemon, slot, onClick }: CardSlotProps) {
           variant="outline"
           className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-10 text-[9px] px-1.5 py-0 h-4 border-violet-500/60 text-violet-300 bg-zinc-900/80 backdrop-blur-sm whitespace-nowrap"
         >
-          TCG
+          {slot?.cardLanguage ? slot.cardLanguage.toUpperCase() : (slot?.tcgCard?.language ? slot.tcgCard.language.toUpperCase() : "TCG")}
         </Badge>
       )}
 

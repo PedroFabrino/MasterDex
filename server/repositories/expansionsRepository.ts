@@ -1,4 +1,4 @@
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, inArray } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import {
   expansions,
@@ -9,6 +9,51 @@ import {
   type CardRecord,
   type InsertCard,
 } from '../db/schema.js'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { tcgdexService } from '../services/tcgdexService.js'
+import { collectorRepository } from './collectorRepository.js'
+import { investmentService } from '../services/investmentService.js'
+import type { ExpansionCategory } from '../../shared/types.js'
+
+export function formatTcgdexImageUrl(url?: string | null, ext = 'png'): string | null {
+  if (!url) return null
+  if (!url.startsWith('https://assets.tcgdex.net')) return url
+  if (/\.(png|webp|jpg|jpeg)$/i.test(url)) return url
+  return `${url}.${ext}`
+}
+
+let baselineCardsCache: CardRecord[] | null = null
+let baselineCardsByExp: Map<string, CardRecord[]> | null = null
+
+function loadBaselineCards(): { all: CardRecord[]; byExp: Map<string, CardRecord[]> } {
+  if (baselineCardsCache && baselineCardsByExp) {
+    return { all: baselineCardsCache, byExp: baselineCardsByExp }
+  }
+
+  try {
+    const filePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../src/data/tcgdexSetCards.json')
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf-8')
+      const items = JSON.parse(raw) as CardRecord[]
+      baselineCardsCache = items
+      baselineCardsByExp = new Map()
+      for (const card of items) {
+        const list = baselineCardsByExp.get(card.expansionId) || []
+        list.push(card)
+        baselineCardsByExp.set(card.expansionId, list)
+      }
+      return { all: baselineCardsCache, byExp: baselineCardsByExp }
+    }
+  } catch (err) {
+    console.warn('[expansionsRepository] Could not load tcgdexSetCards.json:', err)
+  }
+
+  baselineCardsCache = []
+  baselineCardsByExp = new Map()
+  return { all: baselineCardsCache, byExp: baselineCardsByExp }
+}
 
 export class ExpansionsRepository {
   async upsertExpansion(data: InsertExpansion): Promise<ExpansionRecord> {
@@ -28,6 +73,8 @@ export class ExpansionsRepository {
           totalSecretPoolValue: data.totalSecretPoolValue,
           avgSecretPrice: data.avgSecretPrice,
           lastScrapedAt: data.lastScrapedAt,
+          logoUrl: data.logoUrl,
+          symbolUrl: data.symbolUrl,
         })
         .where(eq(expansions.id, existing.id))
 
@@ -41,17 +88,91 @@ export class ExpansionsRepository {
   }
 
   async getAllExpansions(): Promise<ExpansionRecord[]> {
-    return await db.select().from(expansions).orderBy(desc(expansions.investmentScore))
+    const list = await db.select().from(expansions).orderBy(desc(expansions.investmentScore))
+    return list.map((e) => ({
+      ...e,
+      logoUrl: formatTcgdexImageUrl(e.logoUrl),
+      symbolUrl: formatTcgdexImageUrl(e.symbolUrl),
+    }))
   }
 
   async getExpansionBySlug(slug: string): Promise<ExpansionRecord | undefined> {
     const rows = await db.select().from(expansions).where(eq(expansions.slug, slug)).limit(1)
-    return rows[0]
+    if (!rows[0]) return undefined
+    return {
+      ...rows[0],
+      logoUrl: formatTcgdexImageUrl(rows[0].logoUrl),
+      symbolUrl: formatTcgdexImageUrl(rows[0].symbolUrl),
+    }
   }
 
   async getExpansionById(id: string): Promise<ExpansionRecord | undefined> {
     const rows = await db.select().from(expansions).where(eq(expansions.id, id)).limit(1)
-    return rows[0]
+    if (!rows[0]) return undefined
+    return {
+      ...rows[0],
+      logoUrl: formatTcgdexImageUrl(rows[0].logoUrl),
+      symbolUrl: formatTcgdexImageUrl(rows[0].symbolUrl),
+    }
+  }
+
+  async getExpansionsCount(): Promise<number> {
+    const rows = await db.select().from(expansions)
+    return rows.length
+  }
+
+  /**
+   * Indexes all 220+ official expansions from TCGdex and stores set metadata in local.db.
+   */
+  async ensureExpansionsCatalogIndexed(): Promise<number> {
+    const existingList = await this.getAllExpansions()
+    if (existingList.length >= 220) {
+      return existingList.length
+    }
+
+    const existingSlugs = new Set(existingList.map((e) => e.slug))
+    const sets = await tcgdexService.getAllSets()
+
+    const newExpansions: InsertExpansion[] = []
+    for (const s of sets) {
+      const slug = s.id.toLowerCase()
+      if (existingSlugs.has(slug)) {
+        continue
+      }
+
+      const baseCount = s.cardCount?.official || s.cardCount?.total || 0
+      const totalCount = s.cardCount?.total || baseCount
+      const secretCount = Math.max(0, totalCount - baseCount)
+      const series = s.id.replace(/[0-9].*$/, '').toUpperCase() || 'CORE'
+
+      newExpansions.push({
+        id: s.id,
+        name: s.name,
+        slug,
+        series,
+        url: `https://www.tcgdex.net/sets/${s.id}`,
+        baseCount,
+        secretCount,
+        investmentScore: 0,
+        chaseCardName: null,
+        chaseCardPrice: null,
+        totalSecretPoolValue: null,
+        avgSecretPrice: null,
+        lastScrapedAt: new Date(0),
+        logoUrl: formatTcgdexImageUrl(s.logo),
+        symbolUrl: formatTcgdexImageUrl(s.symbol),
+      })
+      existingSlugs.add(slug)
+    }
+
+    if (newExpansions.length > 0) {
+      const batchSize = 40
+      for (let i = 0; i < newExpansions.length; i += batchSize) {
+        await db.insert(expansions).values(newExpansions.slice(i, i + batchSize))
+      }
+    }
+
+    return (await this.getAllExpansions()).length
   }
 
   async upsertCards(cardList: InsertCard[]): Promise<void> {
@@ -72,6 +193,7 @@ export class ExpansionsRepository {
             marketPrice: card.marketPrice,
             isSecret: card.isSecret,
             types: card.types,
+            pokedexId: card.pokedexId,
           })
           .where(eq(cards.id, card.id))
       } else {
@@ -81,20 +203,140 @@ export class ExpansionsRepository {
   }
 
   async getSecretCardsByExpansionId(expansionId: string): Promise<CardRecord[]> {
-    return await db
+    const dbSecrets = await db
       .select()
       .from(cards)
       .where(eq(cards.expansionId, expansionId))
       .all()
       .then((rows) => rows.filter((r) => r.isSecret).sort((a, b) => b.marketPrice - a.marketPrice))
+
+    if (dbSecrets.length > 0) {
+      return dbSecrets
+    }
+
+    const { byExp } = loadBaselineCards()
+    const baseCards = byExp.get(expansionId) || []
+    return baseCards.filter((r) => r.isSecret).sort((a, b) => b.localId - a.localId)
   }
 
   async getAllCardsByExpansionId(expansionId: string): Promise<CardRecord[]> {
-    return await db
+    const dbCards = await db
       .select()
       .from(cards)
       .where(eq(cards.expansionId, expansionId))
       .orderBy(cards.localId)
+
+    if (dbCards.length > 0) {
+      return dbCards
+    }
+
+    const { byExp } = loadBaselineCards()
+    const baseCards = byExp.get(expansionId) || []
+    return [...baseCards].sort((a, b) => a.localId - b.localId)
+  }
+
+  async getAllCards(): Promise<CardRecord[]> {
+    const dbCards = await db.select().from(cards)
+    const { all: baseline } = loadBaselineCards()
+    if (dbCards.length === 0) {
+      return baseline
+    }
+
+    const map = new Map<string, CardRecord>()
+    for (const c of baseline) {
+      map.set(c.id, c)
+    }
+    for (const c of dbCards) {
+      map.set(c.id, c)
+    }
+    return Array.from(map.values())
+  }
+
+  async getCardsByIds(cardIds: string[]): Promise<CardRecord[]> {
+    if (cardIds.length === 0) return []
+    return await db.select().from(cards).where(inArray(cards.id, cardIds))
+  }
+
+  async getExpansionsWithYield(options: {
+    userId?: string
+    rarity?: string
+    sort?: string
+    category?: string
+  }): Promise<Array<ExpansionRecord & { collectionGapYield: number; category: ExpansionCategory }>> {
+    const allExpansions = await this.getAllExpansions()
+    const { all: baseline, byExp: baselineByExp } = loadBaselineCards()
+    const dbCards = await db.select().from(cards)
+
+    let cardsByExp = baselineByExp
+    if (dbCards.length > 0) {
+      cardsByExp = new Map(baselineByExp)
+      for (const card of dbCards) {
+        const list = cardsByExp.get(card.expansionId) || []
+        const filtered = list.filter((c) => c.id !== card.id)
+        filtered.push(card)
+        cardsByExp.set(card.expansionId, filtered)
+      }
+    }
+
+    // Filter by expansion category ('booster' | 'promo' | 'all', default: 'booster')
+    const requestedCategory = (options.category || 'booster').toLowerCase()
+    const filteredExpansions = allExpansions.filter((exp) => {
+      if (requestedCategory === 'all') return true
+      const cat = investmentService.classifyExpansionCategory(exp.id, exp.name)
+      return cat === requestedCategory
+    })
+
+    // Map user owned pokemon to their highest rarity tier
+    const userOwnedRarityMap = new Map<number, number>()
+    if (options.userId) {
+      const cardsById = new Map<string, CardRecord>()
+      for (const card of baseline) {
+        cardsById.set(card.id, card)
+      }
+      for (const card of dbCards) {
+        cardsById.set(card.id, card)
+      }
+
+      const userCollection = await collectorRepository.getUserCollection(options.userId)
+      for (const item of userCollection) {
+        if (!item.collected) continue
+
+        let ownedTier = 0 // default sprite tier
+        if (item.cardId) {
+          const card = cardsById.get(item.cardId)
+          if (card) {
+            ownedTier = investmentService.getRarityTier(card.rarity, card.isSecret)
+          } else {
+            ownedTier = 1
+          }
+        }
+
+        const existingTier = userOwnedRarityMap.get(item.pokedexId) ?? -1
+        if (ownedTier > existingTier) {
+          userOwnedRarityMap.set(item.pokedexId, ownedTier)
+        }
+      }
+    }
+
+    const rarityFilter = options.rarity || 'any'
+    const enriched = filteredExpansions.map((exp) => {
+      const expCards = cardsByExp.get(exp.id) || []
+      const collectionGapYield = investmentService.calculateCollectionGapYield(
+        expCards,
+        userOwnedRarityMap,
+        rarityFilter
+      )
+      const category = investmentService.classifyExpansionCategory(exp.id, exp.name)
+
+      return {
+        ...exp,
+        collectionGapYield,
+        category,
+      }
+    })
+
+    const sortBy = options.sort || 'score'
+    return investmentService.sortExpansions(enriched, sortBy)
   }
 
   async recordPriceHistory(

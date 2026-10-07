@@ -1,3 +1,5 @@
+import pokedexData from "./pokedex.json"
+
 export interface Pokemon {
   id: number
   name: string
@@ -10,66 +12,17 @@ export interface TcgCard {
   setName: string
   number: string
   imageUrl: string
+  thumbnailUrl?: string
   isHolo?: boolean
+  language?: string
 }
+
 
 export interface CollectedSlot {
   pokemonId: number
   tcgCard: TcgCard | null // null = default sprite
+  cardLanguage?: string
 }
-
-const spriteBase = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon"
-
-const KANTO_MOCK_POKEMON: Pokemon[] = [
-  { id: 1,  name: "Bulbasaur",  spriteUrl: `${spriteBase}/1.png`  },
-  { id: 2,  name: "Ivysaur",    spriteUrl: `${spriteBase}/2.png`  },
-  { id: 3,  name: "Venusaur",   spriteUrl: `${spriteBase}/3.png`  },
-  { id: 4,  name: "Charmander", spriteUrl: `${spriteBase}/4.png`  },
-  { id: 5,  name: "Charmeleon", spriteUrl: `${spriteBase}/5.png`  },
-  { id: 6,  name: "Charizard",  spriteUrl: `${spriteBase}/6.png`  },
-  { id: 7,  name: "Squirtle",   spriteUrl: `${spriteBase}/7.png`  },
-  { id: 8,  name: "Wartortle",  spriteUrl: `${spriteBase}/8.png`  },
-  { id: 9,  name: "Blastoise",  spriteUrl: `${spriteBase}/9.png`  },
-  { id: 10, name: "Caterpie",   spriteUrl: `${spriteBase}/10.png` },
-  { id: 11, name: "Metapod",    spriteUrl: `${spriteBase}/11.png` },
-  { id: 12, name: "Butterfree", spriteUrl: `${spriteBase}/12.png` },
-  { id: 13, name: "Weedle",     spriteUrl: `${spriteBase}/13.png` },
-  { id: 14, name: "Kakuna",     spriteUrl: `${spriteBase}/14.png` },
-  { id: 15, name: "Beedrill",   spriteUrl: `${spriteBase}/15.png` },
-  { id: 16, name: "Pidgey",     spriteUrl: `${spriteBase}/16.png` },
-  { id: 17, name: "Pidgeotto",  spriteUrl: `${spriteBase}/17.png` },
-  { id: 18, name: "Pidgeot",    spriteUrl: `${spriteBase}/18.png` },
-  { id: 19, name: "Rattata",    spriteUrl: `${spriteBase}/19.png` },
-  { id: 20, name: "Raticate",   spriteUrl: `${spriteBase}/20.png` },
-  { id: 21, name: "Spearow",    spriteUrl: `${spriteBase}/21.png` },
-  { id: 22, name: "Fearow",     spriteUrl: `${spriteBase}/22.png` },
-  { id: 23, name: "Ekans",      spriteUrl: `${spriteBase}/23.png` },
-  { id: 24, name: "Arbok",      spriteUrl: `${spriteBase}/24.png` },
-  { id: 25, name: "Pikachu",    spriteUrl: `${spriteBase}/25.png` },
-  { id: 26, name: "Raichu",     spriteUrl: `${spriteBase}/26.png` },
-  { id: 27, name: "Sandshrew",  spriteUrl: `${spriteBase}/27.png` },
-  { id: 28, name: "Sandslash",  spriteUrl: `${spriteBase}/28.png` },
-  { id: 29, name: "Nidoran♀",  spriteUrl: `${spriteBase}/29.png` },
-  { id: 30, name: "Nidorina",   spriteUrl: `${spriteBase}/30.png` },
-  { id: 31, name: "Nidoqueen",  spriteUrl: `${spriteBase}/31.png` },
-  { id: 32, name: "Nidoran♂",  spriteUrl: `${spriteBase}/32.png` },
-  { id: 33, name: "Nidorino",   spriteUrl: `${spriteBase}/33.png` },
-  { id: 34, name: "Nidoking",   spriteUrl: `${spriteBase}/34.png` },
-  { id: 35, name: "Clefairy",   spriteUrl: `${spriteBase}/35.png` },
-  { id: 36, name: "Clefable",   spriteUrl: `${spriteBase}/36.png` },
-  { id: 37, name: "Vulpix",     spriteUrl: `${spriteBase}/37.png` },
-  { id: 38, name: "Ninetales",  spriteUrl: `${spriteBase}/38.png` },
-  { id: 39, name: "Jigglypuff", spriteUrl: `${spriteBase}/39.png` },
-  { id: 40, name: "Wigglytuff", spriteUrl: `${spriteBase}/40.png` },
-  { id: 41, name: "Zubat",      spriteUrl: `${spriteBase}/41.png` },
-  { id: 42, name: "Golbat",     spriteUrl: `${spriteBase}/42.png` },
-  { id: 43, name: "Oddish",     spriteUrl: `${spriteBase}/43.png` },
-  { id: 44, name: "Gloom",      spriteUrl: `${spriteBase}/44.png` },
-  { id: 45, name: "Vileplume",  spriteUrl: `${spriteBase}/45.png` },
-  { id: 46, name: "Paras",      spriteUrl: `${spriteBase}/46.png` },
-  { id: 47, name: "Parasect",   spriteUrl: `${spriteBase}/47.png` },
-  { id: 48, name: "Venonat",    spriteUrl: `${spriteBase}/48.png` },
-]
 
 // Pre-built TCG card mock data per Pokémon
 export const TCG_CARDS: Record<number, TcgCard[]> = {
@@ -144,16 +97,7 @@ export const TCG_CARDS: Record<number, TcgCard[]> = {
   ],
 }
 
-const GENERATED_POKEMON: Pokemon[] = Array.from({ length: 386 - KANTO_MOCK_POKEMON.length }, (_, index) => {
-  const id = KANTO_MOCK_POKEMON.length + index + 1
-  return {
-    id,
-    name: `Dex #${String(id).padStart(3, "0")}`,
-    spriteUrl: `${spriteBase}/${id}.png`,
-  }
-})
-
-export const POKEMON: Pokemon[] = [...KANTO_MOCK_POKEMON, ...GENERATED_POKEMON]
+export const POKEMON: Pokemon[] = pokedexData
 
 export interface DexRegion {
   id: string
@@ -167,9 +111,15 @@ export interface DexRegion {
 }
 
 export const DEX_REGIONS: DexRegion[] = [
-  { id: "kanto", name: "Kanto", subtitle: "Original 151", dexStart: 1, dexEnd: 151, pageStart: 1, pageEnd: 10, accent: "text-red-300" },
-  { id: "johto", name: "Johto", subtitle: "New adventures", dexStart: 152, dexEnd: 251, pageStart: 11, pageEnd: 16, accent: "text-amber-300" },
-  { id: "hoenn", name: "Hoenn", subtitle: "#252 onward", dexStart: 252, dexEnd: 386, pageStart: 16, pageEnd: 25, accent: "text-cyan-300" },
+  { id: "kanto", name: "Kanto", subtitle: "Original 151", dexStart: 1, dexEnd: 151, pageStart: 1, pageEnd: 10, accent: "text-red-400" },
+  { id: "johto", name: "Johto", subtitle: "New adventures", dexStart: 152, dexEnd: 251, pageStart: 11, pageEnd: 16, accent: "text-amber-400" },
+  { id: "hoenn", name: "Hoenn", subtitle: "Land & sea", dexStart: 252, dexEnd: 386, pageStart: 16, pageEnd: 25, accent: "text-emerald-400" },
+  { id: "sinnoh", name: "Sinnoh", subtitle: "Myths & legends", dexStart: 387, dexEnd: 493, pageStart: 25, pageEnd: 31, accent: "text-blue-400" },
+  { id: "unova", name: "Unova", subtitle: "Black & White", dexStart: 494, dexEnd: 649, pageStart: 31, pageEnd: 41, accent: "text-zinc-300" },
+  { id: "kalos", name: "Kalos", subtitle: "Mega evolution", dexStart: 650, dexEnd: 721, pageStart: 41, pageEnd: 46, accent: "text-pink-400" },
+  { id: "alola", name: "Alola", subtitle: "Sun & Moon", dexStart: 722, dexEnd: 809, pageStart: 46, pageEnd: 51, accent: "text-orange-400" },
+  { id: "galar", name: "Galar", subtitle: "Sword & Shield", dexStart: 810, dexEnd: 905, pageStart: 51, pageEnd: 57, accent: "text-cyan-400" },
+  { id: "paldea", name: "Paldea", subtitle: "Scarlet & Violet", dexStart: 906, dexEnd: 1025, pageStart: 57, pageEnd: 65, accent: "text-violet-400" },
 ]
 
 export function getPagePokemon(page: number): Pokemon[] {

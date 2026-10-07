@@ -7,6 +7,8 @@ export const collectorProfiles = sqliteTable('collector_profiles', {
   name: text('name').notNull(),
   avatarUrl: text('avatar_url'),
   seededFromSheet: integer('seeded_from_sheet', { mode: 'boolean' }).notNull().default(false),
+  targetRarity: text('target_rarity').notNull().default('any'),
+  hiddenExpansions: text('hidden_expansions').notNull().default('[]'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 })
 
@@ -18,6 +20,7 @@ export const userPokemon = sqliteTable('user_pokemon', {
   cardId: text('card_id'),
   cardName: text('card_name'),
   cardImageUrl: text('card_image_url'),
+  cardLanguage: text('card_language').default('en'),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 })
 
@@ -35,6 +38,8 @@ export const expansions = sqliteTable('expansions', {
   totalSecretPoolValue: real('total_secret_pool_value'),
   avgSecretPrice: real('avg_secret_price'),
   lastScrapedAt: integer('last_scraped_at', { mode: 'timestamp' }).notNull(),
+  logoUrl: text('logo_url'),
+  symbolUrl: text('symbol_url'),
 })
 
 export const cards = sqliteTable('cards', {
@@ -47,6 +52,7 @@ export const cards = sqliteTable('cards', {
   marketPrice: real('market_price').notNull(),
   isSecret: integer('is_secret', { mode: 'boolean' }).notNull(),
   types: text('types'),
+  pokedexId: integer('pokedex_id'),
 })
 
 export const priceHistory = sqliteTable('price_history', {

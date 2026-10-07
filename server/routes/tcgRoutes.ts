@@ -9,20 +9,32 @@ export const tcgRoutes = new Hono()
 // GET /api/tcg/cards/search
 tcgRoutes.get('/cards/search', async (c) => {
   const q = c.req.query('q') || ''
-  if (!q.trim()) {
-    return c.json({ query: '', parsed: { name: '' }, results: [], count: 0 })
+  const dexIdParam = c.req.query('dexId')
+  const dexId = dexIdParam ? parseInt(dexIdParam, 10) : undefined
+
+  if (!q.trim() && !dexId) {
+    return c.json({ query: '', parsed: { name: '' }, results: [], count: 0, total: 0, hasMore: false })
   }
 
   try {
-    const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '20', 10) || 20))
+    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '24', 10) || 24))
+    const offset = Math.max(0, parseInt(c.req.query('offset') || '0', 10) || 0)
+    const rarity = c.req.query('rarity') || 'any'
+    const lang = c.req.query('lang') || 'all'
     const parsed = tcgdexService.parseQuery(q)
-    const results = await tcgdexService.searchCards(q, limit)
+    const results = await tcgdexService.searchCards(q, limit, dexId, offset, rarity, lang)
+    const total = await tcgdexService.getTotalCount(q, dexId, rarity, lang)
 
     return c.json({
       query: q,
       parsed,
+      dexId,
+      rarity,
+      lang,
       results,
       count: results.length,
+      total,
+      hasMore: offset + results.length < total,
     })
   } catch (error: any) {
     return c.json({ error: error?.message || 'Failed to search cards' }, 500)
@@ -41,8 +53,30 @@ const parseHtmlSchema = z.object({
 // GET /api/tcg/expansions
 tcgRoutes.get('/expansions', async (c) => {
   try {
-    const list = await expansionsRepository.getAllExpansions()
-    return c.json({ expansions: list })
+    await expansionsRepository.ensureExpansionsCatalogIndexed()
+
+    const rarity = c.req.query('rarity') || 'any'
+    const sort = c.req.query('sort') || 'score'
+    const category = c.req.query('category') || 'booster'
+    const userId = c.req.query('userId') || undefined
+
+    const list = await expansionsRepository.getExpansionsWithYield({
+      rarity,
+      sort,
+      category,
+      userId,
+    })
+
+    return c.json({
+      expansions: list,
+      count: list.length,
+      filters: {
+        category,
+        rarity,
+        sort,
+        userId: userId ?? null,
+      },
+    })
   } catch (error: any) {
     return c.json({ error: error?.message || 'Failed to fetch expansions' }, 500)
   }

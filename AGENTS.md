@@ -41,4 +41,9 @@
   - Tests <= 500 lines
   Decompose before adding code to any file approaching these limits.
 - **Repository Seam**: Repositories are the only place for database / ORM / data-store queries in the backend.
+- **Internationalization (i18n) Directive**:
+  - Zero hardcoded user-facing strings: Every label, title, button, dialog text, tooltip, empty state, placeholder, and status message across all UI components must be routed through the i18n translation dictionary (`useTranslation`).
+  - No exceptions: Hardcoding raw Portuguese or English text directly in JSX/TSX is strictly forbidden.
+  - Parity enforcement: All translation keys must exist in both `pt-BR` and `en-US` dictionaries with strict TypeScript typing.
 - **Knowledge Graph**: Run `graphify update .` after code modifications.
+
