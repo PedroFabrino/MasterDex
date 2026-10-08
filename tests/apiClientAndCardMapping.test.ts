@@ -237,4 +237,57 @@ describe("Typed API Client (Ticket #23)", () => {
     await apiClient.getExpansionDetails("151")
     expect(globalThis.fetch).toHaveBeenCalledWith("/api/tcg/expansions/151")
   })
+
+  it("sends Authorization header on patchSlot when sessionToken is provided", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true, item: { pokedexId: 25, collected: true } }),
+    } as any)
+
+    await apiClient.patchSlot(
+      25,
+      { userId: "u123", collected: true, cardId: "sv1-25" },
+      "test-session-token"
+    )
+
+    expect(globalThis.fetch).toHaveBeenCalledWith("/api/collection/25", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer test-session-token",
+      },
+      body: JSON.stringify({ userId: "u123", collected: true, cardId: "sv1-25" }),
+    })
+  })
+
+  it("extracts and attaches sessionToken in loginWithGoogle and getProfile", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          profile: { id: "user-1", email: "test@example.com", name: "User" },
+          sessionToken: "jwt-token-123",
+          seeded: false,
+          seededCount: 0,
+        }),
+    } as any)
+
+    const loginRes = await apiClient.loginWithGoogle("fake-google-credential")
+    expect(loginRes.sessionToken).toBe("jwt-token-123")
+    expect(loginRes.profile.sessionToken).toBe("jwt-token-123")
+
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          profile: { id: "user-1", email: "test@example.com", name: "User" },
+          sessionToken: "profile-token-456",
+        }),
+    } as any)
+
+    const profileRes = await apiClient.getProfile("user-1")
+    expect(profileRes.sessionToken).toBe("profile-token-456")
+    expect(profileRes.profile.sessionToken).toBe("profile-token-456")
+  })
 })
+

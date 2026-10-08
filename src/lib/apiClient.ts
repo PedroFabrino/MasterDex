@@ -255,7 +255,7 @@ export const apiClient = {
   async loginWithGoogle(
     credential: string,
     signal?: AbortSignal
-  ): Promise<{ profile: CollectorProfile; seeded: boolean; seededCount: number }> {
+  ): Promise<{ profile: CollectorProfile; sessionToken?: string; seeded: boolean; seededCount: number }> {
     const res = await fetch("/api/auth/google", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -266,7 +266,31 @@ export const apiClient = {
       const errData = await res.json().catch(() => ({}))
       throw new Error(errData.error || `Authentication failed (${res.status})`)
     }
-    return res.json()
+    const data = await res.json()
+    const token = data.sessionToken || data.token || data.profile?.sessionToken
+    return {
+      profile: {
+        ...data.profile,
+        sessionToken: token,
+      },
+      sessionToken: token,
+      seeded: data.seeded,
+      seededCount: data.seededCount,
+    }
+  },
+
+  async getProfile(userId: string): Promise<{ profile: CollectorProfile; sessionToken?: string }> {
+    const res = await fetch(`/api/auth/profile?userId=${encodeURIComponent(userId)}`)
+    if (!res.ok) throw new Error(`Failed to fetch profile (${res.status})`)
+    const data = await res.json()
+    const token = data.sessionToken || data.token || data.profile?.sessionToken
+    return {
+      profile: {
+        ...data.profile,
+        sessionToken: token,
+      },
+      sessionToken: token,
+    }
   },
 
   async get<T = any>(url: string, init?: RequestInit): Promise<T> {

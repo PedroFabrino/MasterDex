@@ -74,6 +74,7 @@ export interface CollectorProfile {
   avatarUrl?: string | null
   seededFromSheet: boolean
   valuationPreference?: ValuationPreference
+  sessionToken?: string
   createdAt: number
 }
 

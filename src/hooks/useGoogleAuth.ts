@@ -54,7 +54,12 @@ export function useGoogleAuth(options: UseGoogleAuthOptions = {}) {
         const data = await apiClient.loginWithGoogle(response.credential, controller.signal)
         clearTimeout(timeoutId)
 
-        optionsRef.current.onLoginSuccess?.(data.profile, {
+        const profileWithToken: CollectorProfile = {
+          ...data.profile,
+          sessionToken: data.sessionToken || data.profile?.sessionToken,
+        }
+
+        optionsRef.current.onLoginSuccess?.(profileWithToken, {
           seeded: data.seeded,
           seededCount: data.seededCount,
         })

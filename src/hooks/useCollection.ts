@@ -3,7 +3,7 @@ import { POKEMON, type CollectedSlot, type TcgCard } from "@/data/pokemon"
 import { type CollectorProfile } from "@/components/auth/AuthModal"
 import { mergeCloudAndLocalCollection } from "@/lib/collectionMerge"
 import { apiClient } from "@/lib/apiClient"
-import { mapCollectionItemsToRecord, toBatchSyncEntry, toCollectedSlot } from "@/lib/cardMapping"
+import { toBatchSyncEntry, toCollectedSlot } from "@/lib/cardMapping"
 import type { PortfolioSummary } from "../../shared/types"
 
 export interface UseCollectionOptions {
@@ -54,18 +54,21 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
     apiClient
       .getCollection(currentUser.id)
       .then((data) => {
-        if (data?.items && Object.keys(data.items).length > 0) {
-          setCollected((prev) => {
-            if (Object.keys(prev).length >= Object.keys(data.items).length) return prev
-            return mapCollectionItemsToRecord(data.items)
-          })
-        }
+        if (!data?.items) return
+        setCollected((prev) => {
+          const { merged, slotsToSync } = mergeCloudAndLocalCollection(data.items, prev)
+          if (slotsToSync.length > 0 && currentUser.sessionToken) {
+            const entries = slotsToSync.map(({ pokemonId, slot }) => toBatchSyncEntry(pokemonId, slot))
+            apiClient.batchSyncCollection(currentUser.id, entries, currentUser.sessionToken).catch(() => {})
+          }
+          return merged
+        })
       })
       .catch(() => {})
-  }, [currentUser?.id])
+  }, [currentUser?.id, currentUser?.sessionToken])
 
   const syncSlotToBackend = useCallback(
-    (
+    async (
       pokemonId: number,
       opts: {
         collected: boolean
@@ -76,6 +79,14 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
       }
     ) => {
       if (!currentUser) return
+      let token = currentUser.sessionToken
+      if (!token) {
+        try {
+          const res = await apiClient.getProfile(currentUser.id)
+          token = res?.sessionToken
+        } catch {}
+      }
+
       apiClient
         .patchSlot(
           pokemonId,
@@ -87,7 +98,7 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
             cardImageUrl: opts.cardImageUrl ?? null,
             cardLanguage: opts.cardLanguage ?? null,
           },
-          currentUser.sessionToken
+          token
         )
         .then(() => refreshPortfolio())
         .catch(() => {})

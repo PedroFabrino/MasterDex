@@ -15,6 +15,7 @@ import { useGoogleAuth } from "@/hooks/useGoogleAuth"
 import { useCollection } from "@/hooks/useCollection"
 import { useBinderNavigation } from "@/hooks/useBinderNavigation"
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts"
+import { apiClient } from "@/lib/apiClient"
 
 export function App() {
   const [appMode, setAppMode] = useState<"binder" | "investor">(() =>
@@ -77,6 +78,20 @@ export function App() {
       localStorage.removeItem("masterdex_user")
     }
   }, [currentUser])
+
+  // Rehydrate sessionToken if currentUser exists in localStorage without a valid sessionToken
+  useEffect(() => {
+    if (currentUser && !currentUser.sessionToken) {
+      apiClient
+        .getProfile(currentUser.id)
+        .then((res) => {
+          if (res?.profile?.sessionToken) {
+            setCurrentUser(res.profile)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [currentUser?.id, currentUser?.sessionToken])
 
   const handleLogout = useCallback(() => {
     try {

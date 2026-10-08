@@ -59,7 +59,10 @@ authRoutes.post('/google', async (c) => {
     }
 
     return c.json({
-      profile,
+      profile: {
+        ...profile,
+        sessionToken,
+      },
       token: sessionToken,
       sessionToken,
       seeded,
@@ -92,7 +95,15 @@ authRoutes.get('/profile', async (c) => {
       return c.json({ error: 'Profile not found' }, 404)
     }
 
-    return c.json({ profile })
+    const sessionToken = createSessionToken(profile.id)
+    return c.json({
+      profile: {
+        ...profile,
+        sessionToken,
+      },
+      sessionToken,
+      token: sessionToken,
+    })
   } catch (error: any) {
     return c.json({ error: error?.message || 'Failed to fetch profile' }, 500)
   }
