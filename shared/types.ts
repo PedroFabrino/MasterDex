@@ -29,6 +29,7 @@ export interface Expansion {
   logoUrl?: string | null
   symbolUrl?: string | null
   ligapokemonCode?: string | null
+  ligapokemonUrl?: string | null
   collectionGapYield?: number
   category?: ExpansionCategory
   canonicalPrice?: number
@@ -150,5 +151,42 @@ export interface PortfolioSummary {
     ligapokemonBrl: number
     tcgplayerBrl: number
   }
+}
+
+export interface RawDetectedSlot {
+  slotIndex: number
+  pokemonName?: string | null
+  cardName?: string | null
+  collectorNumber?: string | null
+  setName?: string | null
+  confidence?: number
+  empty?: boolean
+}
+
+export interface ScannedSlotResult {
+  slotIndex: number
+  pokedexId: number | null
+  pokemonName: string
+  cardName: string
+  collectorNumber: string | null
+  setName: string | null
+  confidence: number
+  empty: boolean
+  matchedCard?: {
+    id: string
+    name: string
+    imageUrl: string | null
+    expansionId: string
+    marketPrice?: number
+    rarity?: string
+  } | null
+}
+
+export interface BinderScanResponse {
+  success: boolean
+  layout: string
+  totalSlots: number
+  detectedCardsCount: number
+  slots: ScannedSlotResult[]
 }
 

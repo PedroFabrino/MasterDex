@@ -2,43 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expansionsRepository } from '../repositories/expansionsRepository.js'
-
-export interface RawDetectedSlot {
-  slotIndex: number
-  pokemonName?: string | null
-  cardName?: string | null
-  collectorNumber?: string | null
-  setName?: string | null
-  confidence?: number
-  empty?: boolean
-}
-
-export interface ScannedSlotResult {
-  slotIndex: number
-  pokedexId: number | null
-  pokemonName: string
-  cardName: string
-  collectorNumber: string | null
-  setName: string | null
-  confidence: number
-  empty: boolean
-  matchedCard?: {
-    id: string
-    name: string
-    imageUrl: string | null
-    expansionId: string
-    marketPrice?: number
-    rarity?: string
-  } | null
-}
-
-export interface BinderScanResponse {
-  success: boolean
-  layout: string
-  totalSlots: number
-  detectedCardsCount: number
-  slots: ScannedSlotResult[]
-}
+import type { RawDetectedSlot, ScannedSlotResult, BinderScanResponse } from '../../shared/types.js'
+export type { RawDetectedSlot, ScannedSlotResult, BinderScanResponse }
 
 const LAYOUT_CONFIG: Record<string, { rows: number; cols: number; totalSlots: number }> = {
   '2x2': { rows: 2, cols: 2, totalSlots: 4 },

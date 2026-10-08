@@ -7,7 +7,7 @@ import { Sparkles, Loader2, RefreshCw, ExternalLink, TrendingUp } from "lucide-r
 import { useTranslation } from "@/i18n"
 import { apiClient } from "@/lib/apiClient"
 import { cn } from "@/lib/utils"
-import type { Expansion, Card, CardWithPrices } from "../../../shared/types.js"
+import type { Expansion, CardWithPrices } from "../../../shared/types.js"
 
 interface ExpansionDetailModalProps {
   expansion: (Expansion & { collectionGapYield?: number }) | null

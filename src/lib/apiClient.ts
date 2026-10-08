@@ -49,6 +49,7 @@ export interface UpdatePreferencesPayload {
   targetRarity?: string
   targetLanguage?: string
   hiddenExpansions?: string[]
+  valuationPreference?: 'ligapokemon' | 'tcgplayer'
 }
 
 export interface CollectionResponse {
@@ -264,6 +265,43 @@ export const apiClient = {
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}))
       throw new Error(errData.error || `Authentication failed (${res.status})`)
+    }
+    return res.json()
+  },
+
+  async get<T = any>(url: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(url, init)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || `HTTP error ${res.status}`)
+    }
+    return res.json()
+  },
+
+  async post<T = any>(url: string, body?: any, init?: RequestInit): Promise<T> {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...init?.headers },
+      body: body ? JSON.stringify(body) : undefined,
+      ...init,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || `HTTP error ${res.status}`)
+    }
+    return res.json()
+  },
+
+  async patch<T = any>(url: string, body?: any, init?: RequestInit): Promise<T> {
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...init?.headers },
+      body: body ? JSON.stringify(body) : undefined,
+      ...init,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || `HTTP error ${res.status}`)
     }
     return res.json()
   },

@@ -14,7 +14,7 @@ export class TcgdexPricingService {
         signal: AbortSignal.timeout(4000),
       })
       if (!res.ok) return null
-      const data = await res.json()
+      const data = (await res.json()) as any
 
       const result: {
         tcgplayer?: { nativePrice: number; currency: string }

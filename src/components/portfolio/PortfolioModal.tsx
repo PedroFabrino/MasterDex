@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Briefcase, TrendingUp, Sparkles, MapPin, DollarSign } from "lucide-react"
+import { Briefcase, Sparkles, MapPin, DollarSign } from "lucide-react"
 import { useTranslation } from "@/i18n"
 import type { PortfolioSummary } from "../../../shared/types.js"
 

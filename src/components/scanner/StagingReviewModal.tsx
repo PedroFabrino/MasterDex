@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import {
   CheckCircle2,
   ChevronLeft,
@@ -16,16 +15,13 @@ import {
   Edit2,
   Loader2,
   Sparkles,
-  Search,
-  X,
-  AlertCircle,
   Database,
 } from "lucide-react"
 import { useTranslation } from "@/i18n"
 import { apiClient } from "@/lib/apiClient"
 import { type CapturedBinderPage } from "./BinderScannerModal"
-import { type ScannedSlotResult, type BinderScanResponse } from "../../../server/services/binderVisionService"
-import { POKEMON } from "@/data/pokemon"
+import { type ScannedSlotResult, type BinderScanResponse } from "../../../shared/types"
+import { SpeciesCorrectionModal } from "./SpeciesCorrectionModal"
 
 interface StagingReviewModalProps {
   open: boolean
@@ -50,8 +46,7 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [syncSummary, setSyncSummary] = useState<number | null>(null)
-  const [editingSlot, setEditingSlot] = useState<{ slotIndex: number; slot: ScannedSlotResult } | null>(null)
-  const [searchFilter, setSearchFilter] = useState("")
+  const [editingSlot, setEditingSlot] = useState<ScannedSlotResult | null>(null)
 
   // Scan all captured pages on open
   useEffect(() => {
@@ -117,13 +112,6 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
     })
     setEditingSlot(null)
   }
-
-  // Filtered Pokémon list for species correction
-  const filteredSpecies = useMemo(() => {
-    if (!searchFilter.trim()) return POKEMON.slice(0, 15)
-    const q = searchFilter.toLowerCase().trim()
-    return POKEMON.filter((p) => p.name.toLowerCase().includes(q) || String(p.id).includes(q)).slice(0, 15)
-  }, [searchFilter])
 
   // Bulk Save all detected Pokémon
   const handleConfirmAll = useCallback(async () => {
@@ -273,7 +261,7 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
               {currentSlots.map((slot) => (
                 <div
                   key={slot.slotIndex}
-                  onClick={() => setEditingSlot({ slotIndex: slot.slotIndex, slot })}
+                  onClick={() => setEditingSlot(slot)}
                   className={`relative p-2.5 rounded-lg border transition-all cursor-pointer flex flex-col justify-between min-h-[96px] ${
                     slot.empty
                       ? "border-dashed border-zinc-800 bg-zinc-950/40 hover:border-zinc-700"
@@ -342,70 +330,11 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
         )}
 
         {/* Inline Correction Popover / Dialog */}
-        {editingSlot && (
-          <Dialog open={true} onOpenChange={() => setEditingSlot(null)}>
-            <DialogContent className="max-w-md bg-zinc-900 border-zinc-800 text-zinc-100">
-              <DialogHeader>
-                <DialogTitle className="text-sm font-bold">
-                  {t("staging.correctSpecies")} (#{editingSlot.slotIndex + 1})
-                </DialogTitle>
-              </DialogHeader>
-
-              <div className="space-y-3 pt-1">
-                <div className="relative">
-                  <Search className="size-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <Input
-                    value={searchFilter}
-                    onChange={(e) => setSearchFilter(e.target.value)}
-                    placeholder={t("staging.searchPokemonPlaceholder")}
-                    className="pl-8 bg-zinc-950 border-zinc-800 text-xs"
-                  />
-                </div>
-
-                <div className="max-h-48 overflow-y-auto space-y-1">
-                  {filteredSpecies.map((poke) => (
-                    <button
-                      key={poke.id}
-                      onClick={() =>
-                        handleUpdateSlot(editingSlot.slotIndex, {
-                          pokedexId: poke.id,
-                          pokemonName: poke.name,
-                          cardName: poke.name,
-                          empty: false,
-                          confidence: 1.0,
-                        })
-                      }
-                      className="w-full flex items-center justify-between p-2 rounded-lg bg-zinc-950/60 hover:bg-zinc-800 text-xs text-left cursor-pointer"
-                    >
-                      <span className="font-medium text-zinc-200">{poke.name}</span>
-                      <span className="font-mono text-zinc-500">#{poke.id}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex justify-between pt-2 border-t border-zinc-800">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      handleUpdateSlot(editingSlot.slotIndex, {
-                        empty: true,
-                        pokedexId: null,
-                        pokemonName: "",
-                      })
-                    }
-                    className="text-red-400 text-xs"
-                  >
-                    {t("staging.emptySlot")}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setEditingSlot(null)} className="text-xs">
-                    {t("common.close")}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+        <SpeciesCorrectionModal
+          editingSlot={editingSlot}
+          onClose={() => setEditingSlot(null)}
+          onUpdateSlot={handleUpdateSlot}
+        />
       </DialogContent>
     </Dialog>
   )

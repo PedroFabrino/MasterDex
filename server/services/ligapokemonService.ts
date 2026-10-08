@@ -4,7 +4,6 @@ import { fileURLToPath } from 'node:url'
 import * as cheerio from 'cheerio'
 import { expansionsRepository } from '../repositories/expansionsRepository.js'
 import { pricingRepository } from '../repositories/pricingRepository.js'
-import { investmentService } from './investmentService.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const setsMapPath = path.resolve(__dirname, '../data/ligapokemonSets.json')
