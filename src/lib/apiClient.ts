@@ -31,6 +31,7 @@ export interface GetExpansionsParams {
   minCards?: number
   lang?: string
   userId?: string
+  preference?: 'ligapokemon' | 'tcgplayer'
 }
 
 export interface PatchSlotPayload {
@@ -162,6 +163,7 @@ export const apiClient = {
     if (params?.sort) queryParts.push(`sort=${encodeURIComponent(params.sort)}`)
     if (params?.category) queryParts.push(`category=${encodeURIComponent(params.category)}`)
     if (params?.userId) queryParts.push(`userId=${encodeURIComponent(params.userId)}`)
+    if (params?.preference) queryParts.push(`preference=${encodeURIComponent(params.preference)}`)
 
     const queryStr = queryParts.length > 0 ? `?${queryParts.join("&")}` : ""
     const res = await fetch(`/api/tcg/expansions${queryStr}`)
@@ -169,8 +171,12 @@ export const apiClient = {
     return res.json()
   },
 
-  async getExpansionDetails(slug: string): Promise<ExpansionDetailsResponse> {
-    const res = await fetch(`/api/tcg/expansions/${encodeURIComponent(slug)}`)
+  async getExpansionDetails(
+    slug: string,
+    preference?: 'ligapokemon' | 'tcgplayer'
+  ): Promise<ExpansionDetailsResponse> {
+    const queryStr = preference ? `?preference=${encodeURIComponent(preference)}` : ""
+    const res = await fetch(`/api/tcg/expansions/${encodeURIComponent(slug)}${queryStr}`)
     if (!res.ok) throw new Error(`Failed to load expansion details (${res.status})`)
     return res.json()
   },

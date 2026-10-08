@@ -223,10 +223,14 @@ export class CollectorRepository {
       .where(eq(collectorProfiles.id, userId))
   }
 
-  async getPreferences(userId: string): Promise<{ targetRarity: string; hiddenExpansions: string[] }> {
+  async getPreferences(userId: string): Promise<{
+    targetRarity: string
+    hiddenExpansions: string[]
+    valuationPreference: 'ligapokemon' | 'tcgplayer'
+  }> {
     const profile = await this.getProfileById(userId)
     if (!profile) {
-      return { targetRarity: 'any', hiddenExpansions: [] }
+      return { targetRarity: 'any', hiddenExpansions: [], valuationPreference: 'ligapokemon' }
     }
     let hiddenExpansions: string[] = []
     try {
@@ -237,13 +241,23 @@ export class CollectorRepository {
     return {
       targetRarity: profile.targetRarity || 'any',
       hiddenExpansions,
+      valuationPreference:
+        (profile.valuationPreference as 'ligapokemon' | 'tcgplayer') || 'ligapokemon',
     }
   }
 
   async updatePreferences(
     userId: string,
-    updates: { targetRarity?: string; hiddenExpansions?: string[] }
-  ): Promise<{ targetRarity: string; hiddenExpansions: string[] }> {
+    updates: {
+      targetRarity?: string
+      hiddenExpansions?: string[]
+      valuationPreference?: 'ligapokemon' | 'tcgplayer'
+    }
+  ): Promise<{
+    targetRarity: string
+    hiddenExpansions: string[]
+    valuationPreference: 'ligapokemon' | 'tcgplayer'
+  }> {
     const profile = await this.getProfileById(userId)
     if (!profile) {
       await this.upsertProfile({
@@ -253,12 +267,19 @@ export class CollectorRepository {
       })
     }
 
-    const payload: { targetRarity?: string; hiddenExpansions?: string } = {}
+    const payload: {
+      targetRarity?: string
+      hiddenExpansions?: string
+      valuationPreference?: string
+    } = {}
     if (updates.targetRarity !== undefined) {
       payload.targetRarity = updates.targetRarity
     }
     if (updates.hiddenExpansions !== undefined) {
       payload.hiddenExpansions = JSON.stringify(updates.hiddenExpansions)
+    }
+    if (updates.valuationPreference !== undefined) {
+      payload.valuationPreference = updates.valuationPreference
     }
 
     if (Object.keys(payload).length > 0) {

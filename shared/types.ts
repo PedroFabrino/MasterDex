@@ -31,6 +31,8 @@ export interface Expansion {
   ligapokemonCode?: string | null
   collectionGapYield?: number
   category?: ExpansionCategory
+  canonicalPrice?: number
+  valuationPreference?: ValuationPreference
 }
 
 export interface Card {
@@ -61,6 +63,8 @@ export interface InvestmentMetrics {
   investmentScore: number
 }
 
+export type ValuationPreference = 'ligapokemon' | 'tcgplayer'
+
 export interface CollectorProfile {
   id: string
   googleId?: string | null
@@ -68,6 +72,7 @@ export interface CollectorProfile {
   name: string
   avatarUrl?: string | null
   seededFromSheet: boolean
+  valuationPreference?: ValuationPreference
   createdAt: number
 }
 
@@ -101,6 +106,7 @@ export interface TcgCardSearchResult {
 export interface CollectorPreferences {
   targetRarity: string
   hiddenExpansions: string[]
+  valuationPreference?: ValuationPreference
 }
 
 export interface CardPrice {

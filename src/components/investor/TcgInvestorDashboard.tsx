@@ -25,6 +25,7 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [preferencesLoaded, setPreferencesLoaded] = useState(false)
   const [hiddenExpansions, setHiddenExpansions] = useState<string[]>([])
+  const [valuationPreference, setValuationPreference] = useState<'ligapokemon' | 'tcgplayer'>('ligapokemon')
 
   // Modal states
   const [selectedExpansion, setSelectedExpansion] = useState<(Expansion & { collectionGapYield?: number }) | null>(null)
@@ -42,6 +43,7 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
     async function loadPreferences() {
       let localRarity = "any"
       let localHidden: string[] = []
+      let localVal: 'ligapokemon' | 'tcgplayer' = 'ligapokemon'
       try {
         const stored = localStorage.getItem("masterdex_collector_preferences")
         if (stored) {
@@ -49,6 +51,8 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
           if (parsed.targetRarity) localRarity = parsed.targetRarity
           if (Array.isArray(parsed.hiddenExpansions)) localHidden = parsed.hiddenExpansions
         }
+        const storedVal = localStorage.getItem("masterdex_valuation_preference")
+        if (storedVal === "ligapokemon" || storedVal === "tcgplayer") localVal = storedVal
       } catch {
         // fallback
       }
@@ -59,8 +63,10 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
           const pref = data.preferences
           const finalRarity = pref.targetRarity || localRarity
           const finalHidden = pref.hiddenExpansions?.length ? pref.hiddenExpansions : localHidden
+          const finalVal = pref.valuationPreference || localVal
           setRarity(finalRarity)
           setHiddenExpansions(finalHidden)
+          setValuationPreference(finalVal)
           setPreferencesLoaded(true)
           return
         }
@@ -70,6 +76,7 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
 
       setRarity(localRarity)
       setHiddenExpansions(localHidden)
+      setValuationPreference(localVal)
       setPreferencesLoaded(true)
     }
 
@@ -93,6 +100,16 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
       .catch((err) => console.warn("Failed to save rarity preference:", err))
   }
 
+  const handleValuationPreferenceChange = (newVal: 'ligapokemon' | 'tcgplayer') => {
+    setValuationPreference(newVal)
+    try {
+      localStorage.setItem("masterdex_valuation_preference", newVal)
+    } catch {}
+    apiClient
+      .updateCollectorPreferences({ userId, valuationPreference: newVal })
+      .catch((err) => console.warn("Failed to save valuation preference:", err))
+  }
+
   // Fetch expansions from backend API with server-side yield & sorting
   const loadExpansions = useCallback(async () => {
     setIsLoading(true)
@@ -102,6 +119,7 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
         sort: sortBy,
         category,
         userId,
+        preference: valuationPreference,
       })
       setExpansions(data.expansions || [])
     } catch (err: any) {
@@ -109,7 +127,7 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [category, rarity, sortBy, userId])
+  }, [category, rarity, sortBy, userId, valuationPreference])
 
   useEffect(() => {
     if (preferencesLoaded) {
@@ -266,6 +284,8 @@ export function TcgInvestorDashboard({ userId }: TcgInvestorDashboardProps) {
         onRarityChange={handleRarityChange}
         sortBy={sortBy}
         onSortByChange={setSortBy}
+        valuationPreference={valuationPreference}
+        onValuationPreferenceChange={handleValuationPreferenceChange}
       />
 
       {/* Leaderboard Cards Grid */}

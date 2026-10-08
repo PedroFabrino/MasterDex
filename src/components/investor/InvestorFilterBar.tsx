@@ -18,6 +18,8 @@ export interface InvestorFilterBarProps {
   onRarityChange: (rarity: string) => void
   sortBy: string
   onSortByChange: (sortBy: string) => void
+  valuationPreference?: 'ligapokemon' | 'tcgplayer'
+  onValuationPreferenceChange?: (pref: 'ligapokemon' | 'tcgplayer') => void
 }
 
 export function InvestorFilterBar({
@@ -29,6 +31,8 @@ export function InvestorFilterBar({
   onRarityChange,
   sortBy,
   onSortByChange,
+  valuationPreference,
+  onValuationPreferenceChange,
 }: InvestorFilterBarProps) {
   const { t } = useTranslation()
 
@@ -95,6 +99,31 @@ export function InvestorFilterBar({
             </SelectContent>
           </Select>
         </div>
+
+        {/* Valuation Preference Filter */}
+        {onValuationPreferenceChange && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-zinc-400 whitespace-nowrap">
+              {t("investor.valuationPreferenceLabel")}
+            </span>
+            <Select
+              value={valuationPreference || "ligapokemon"}
+              onValueChange={(v) => onValuationPreferenceChange(v as "ligapokemon" | "tcgplayer")}
+            >
+              <SelectTrigger className="w-40 h-9 bg-zinc-950/60 border-zinc-700 text-zinc-200 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-800 border-zinc-700">
+                <SelectItem value="ligapokemon" className="text-zinc-200 text-xs">
+                  {t("investor.valuationLigapokemon")}
+                </SelectItem>
+                <SelectItem value="tcgplayer" className="text-zinc-200 text-xs">
+                  {t("investor.valuationTcgplayer")}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
     </div>
   )

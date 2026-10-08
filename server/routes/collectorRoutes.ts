@@ -8,6 +8,7 @@ const updatePreferencesSchema = z.object({
   userId: z.string().optional(),
   targetRarity: z.enum(['any', 'holo', 'ultra', 'illustration', 'secret']).optional(),
   hiddenExpansions: z.array(z.string()).optional(),
+  valuationPreference: z.enum(['ligapokemon', 'tcgplayer']).optional(),
 })
 
 // GET /api/collector/preferences
@@ -37,6 +38,7 @@ collectorRoutes.patch('/preferences', async (c) => {
     const updated = await collectorRepository.updatePreferences(userId, {
       targetRarity: parsed.data.targetRarity,
       hiddenExpansions: parsed.data.hiddenExpansions,
+      valuationPreference: parsed.data.valuationPreference,
     })
 
     return c.json({

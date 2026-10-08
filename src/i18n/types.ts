@@ -212,6 +212,9 @@ export interface TranslationDictionary {
     viewOnLigapokemonButton: string
     ligapokemonCodeLabel: string
     overrideCodePlaceholder: string
+    valuationPreferenceLabel: string
+    valuationLigapokemon: string
+    valuationTcgplayer: string
   }
   binderSearch: {
     placeholder: string
@@ -248,6 +251,12 @@ export interface TranslationDictionary {
     langPt: string
     langEn: string
     langJa: string
+    valuationPreferenceTitle: string
+    valuationPreferenceDesc: string
+    valuationLigapokemonTitle: string
+    valuationLigapokemonDesc: string
+    valuationTcgplayerTitle: string
+    valuationTcgplayerDesc: string
     menuButton: string
   }
   scanner: {

@@ -11,6 +11,7 @@ export const collectorProfiles = sqliteTable('collector_profiles', {
   hiddenExpansions: text('hidden_expansions').notNull().default('[]'),
   geminiApiKey: text('gemini_api_key'),
   favoredLanguages: text('favored_languages').notNull().default('["pt", "en", "ja"]'),
+  valuationPreference: text('valuation_preference').notNull().default('ligapokemon'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 })
 

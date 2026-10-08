@@ -8,6 +8,7 @@ import { pricingRepository } from '../repositories/pricingRepository.js'
 import { exchangeRateService } from '../services/exchangeRateService.js'
 import { tcgdexPricingService } from '../services/tcgdexPricingService.js'
 import { ligapokemonService } from '../services/ligapokemonService.js'
+import { canonicalPriceService } from '../services/canonicalPriceService.js'
 
 
 export const tcgRoutes = new Hono()
@@ -83,12 +84,14 @@ tcgRoutes.get('/expansions', async (c) => {
     const sort = c.req.query('sort') || 'score'
     const category = c.req.query('category') || 'booster'
     const userId = c.req.query('userId') || undefined
+    const preference = (c.req.query('preference') as any) || undefined
 
     const list = await investmentService.getExpansionsWithYield({
       rarity,
       sort,
       category,
       userId,
+      preference,
     })
 
 
@@ -110,6 +113,7 @@ tcgRoutes.get('/expansions', async (c) => {
         rarity,
         sort,
         userId: userId ?? null,
+        preference: preference ?? null,
       },
     })
   } catch (error: any) {
@@ -120,6 +124,7 @@ tcgRoutes.get('/expansions', async (c) => {
 // GET /api/tcg/expansions/:slug
 tcgRoutes.get('/expansions/:slug', async (c) => {
   const slug = c.req.param('slug')
+  const preference = (c.req.query('preference') as any) || 'ligapokemon'
   try {
     const expansion = await expansionsRepository.getExpansionBySlug(slug)
     if (!expansion) {
@@ -135,15 +140,27 @@ tcgRoutes.get('/expansions/:slug', async (c) => {
       exchangeRateService.getAllRates(),
     ])
 
-    const cardsWithPrices = allCards.map((card) => ({
-      ...card,
-      prices: pricesMap.get(card.id) || [],
-    }))
+    const cardsWithPrices = allCards.map((card) => {
+      const prices = pricesMap.get(card.id) || []
+      const canonical = canonicalPriceService.resolveFromQuotes(prices, preference, card.marketPrice, rates)
+      return {
+        ...card,
+        prices,
+        canonicalPrice: canonical.priceInBrl,
+        canonicalProvider: canonical.provider,
+      }
+    })
 
-    const secretsWithPrices = secretCards.map((card) => ({
-      ...card,
-      prices: pricesMap.get(card.id) || [],
-    }))
+    const secretsWithPrices = secretCards.map((card) => {
+      const prices = pricesMap.get(card.id) || []
+      const canonical = canonicalPriceService.resolveFromQuotes(prices, preference, card.marketPrice, rates)
+      return {
+        ...card,
+        prices,
+        canonicalPrice: canonical.priceInBrl,
+        canonicalProvider: canonical.provider,
+      }
+    })
 
     const ligapokemonCode = ligapokemonService.resolveEditionCode(expansion)
     const ligapokemonUrl = ligapokemonCode ? ligapokemonService.getSearchUrl(ligapokemonCode) : null
@@ -153,6 +170,7 @@ tcgRoutes.get('/expansions/:slug', async (c) => {
         ...expansion,
         ligapokemonCode,
         ligapokemonUrl,
+        valuationPreference: preference,
       },
       secretCards: secretsWithPrices,
       cards: cardsWithPrices,

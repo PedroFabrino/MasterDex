@@ -1,10 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { InvestmentMetrics, ExpansionCategory } from '../../shared/types.js'
+import type { InvestmentMetrics, ExpansionCategory, ValuationPreference } from '../../shared/types.js'
 import type { CardRecord, ExpansionRecord } from '../db/schema.js'
 import { expansionsRepository } from '../repositories/expansionsRepository.js'
 import { collectorRepository } from '../repositories/collectorRepository.js'
+import { canonicalPriceService } from './canonicalPriceService.js'
 
 
 export interface CardPriceInput {
@@ -293,7 +294,8 @@ export class InvestmentService {
     rarity?: string
     sort?: string
     category?: string
-  }): Promise<Array<ExpansionRecord & { collectionGapYield: number; category: ExpansionCategory }>> {
+    preference?: ValuationPreference
+  }): Promise<Array<ExpansionRecord & { collectionGapYield: number; category: ExpansionCategory; valuationPreference?: ValuationPreference }>> {
     const allExpansions = await expansionsRepository.getAllExpansions()
     const { allCards, cardsByExp } = await expansionsRepository.getCardsGroupedByExpansion()
 
@@ -307,13 +309,22 @@ export class InvestmentService {
 
     // Map user owned pokemon to their highest rarity tier
     const userOwnedRarityMap = new Map<number, number>()
+    let resolvedPreference = options.preference
     if (options.userId) {
       const cardsById = new Map<string, CardRecord>()
       for (const card of allCards) {
         cardsById.set(card.id, card)
       }
 
-      const userCollection = await collectorRepository.getUserCollection(options.userId)
+      const [userCollection, userPrefs] = await Promise.all([
+        collectorRepository.getUserCollection(options.userId),
+        collectorRepository.getPreferences(options.userId),
+      ])
+
+      if (!resolvedPreference) {
+        resolvedPreference = userPrefs.valuationPreference
+      }
+
       for (const item of userCollection) {
         if (!item.collected) continue
 
@@ -334,6 +345,7 @@ export class InvestmentService {
       }
     }
 
+    const pref = resolvedPreference || 'ligapokemon'
     const rarityFilter = (options.rarity as TargetRarity) || 'any'
     const enriched = filteredExpansions.map((exp) => {
       const expCards = cardsByExp.get(exp.id) || []
@@ -351,8 +363,15 @@ export class InvestmentService {
       }
     })
 
+    const canonicalEnriched = await canonicalPriceService.enrichExpansionsWithCanonicalMetrics(
+      enriched,
+      cardsByExp,
+      pref,
+      (base, secrets) => this.calculateMetrics(base, secrets)
+    )
+
     const sortBy = options.sort || 'score'
-    return this.sortExpansions(enriched, sortBy)
+    return this.sortExpansions(canonicalEnriched, sortBy)
   }
 }
 

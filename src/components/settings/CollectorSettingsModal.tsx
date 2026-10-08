@@ -1,29 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import {
-  Key,
-  Eye,
-  EyeOff,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  ArrowUp,
-  ArrowDown,
-  Languages,
-  Trash2,
-  Save,
-} from "lucide-react"
+import { Key, Save, TrendingUp, CheckCircle2, Loader2 } from "lucide-react"
 import { useTranslation } from "@/i18n"
 import { apiClient } from "@/lib/apiClient"
+import { cn } from "@/lib/utils"
+import { LanguagePriorityList } from "./LanguagePriorityList"
+import { GeminiApiKeySection } from "./GeminiApiKeySection"
 
 interface CollectorSettingsModalProps {
   open: boolean
@@ -40,10 +23,10 @@ export const CollectorSettingsModal: React.FC<CollectorSettingsModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const [apiKey, setApiKey] = useState("")
-  const [showApiKey, setShowApiKey] = useState(false)
   const [maskedApiKey, setMaskedApiKey] = useState<string | null>(null)
   const [hasSavedKey, setHasSavedKey] = useState(false)
   const [favoredLanguages, setFavoredLanguages] = useState<string[]>(DEFAULT_LANGUAGES)
+  const [valuationPreference, setValuationPreference] = useState<'ligapokemon' | 'tcgplayer'>('ligapokemon')
 
   const [isTesting, setIsTesting] = useState(false)
   const [testResult, setTestResult] = useState<{
@@ -72,6 +55,10 @@ export const CollectorSettingsModal: React.FC<CollectorSettingsModalProps> = ({
             setFavoredLanguages(parsed)
           }
         }
+        const localVal = localStorage.getItem("masterdex_valuation_preference")
+        if (localVal === "ligapokemon" || localVal === "tcgplayer") {
+          setValuationPreference(localVal)
+        }
         const localKey = localStorage.getItem("masterdex_gemini_api_key")
         if (localKey) {
           setApiKey(localKey)
@@ -85,26 +72,37 @@ export const CollectorSettingsModal: React.FC<CollectorSettingsModalProps> = ({
       // 2. If authenticated user, fetch from backend
       if (userId && userId !== "guest") {
         try {
-          const res = await apiClient.get<{
-            settings: {
-              maskedGeminiApiKey: string | null
-              hasGeminiApiKey: boolean
-              favoredLanguages: string[]
-            }
-          }>(`/api/collector/settings?userId=${encodeURIComponent(userId)}`)
+          const [settingsRes, prefsRes] = await Promise.all([
+            apiClient.get<{
+              settings: {
+                maskedGeminiApiKey: string | null
+                hasGeminiApiKey: boolean
+                favoredLanguages: string[]
+              }
+            }>(`/api/collector/settings?userId=${encodeURIComponent(userId)}`),
+            apiClient.getCollectorPreferences(userId),
+          ])
 
-          if (res?.settings) {
-            if (res.settings.favoredLanguages?.length) {
-              setFavoredLanguages(res.settings.favoredLanguages)
+          if (settingsRes?.settings) {
+            if (settingsRes.settings.favoredLanguages?.length) {
+              setFavoredLanguages(settingsRes.settings.favoredLanguages)
               localStorage.setItem(
                 "masterdex_favored_languages",
-                JSON.stringify(res.settings.favoredLanguages)
+                JSON.stringify(settingsRes.settings.favoredLanguages)
               )
             }
-            if (res.settings.hasGeminiApiKey) {
+            if (settingsRes.settings.hasGeminiApiKey) {
               setHasSavedKey(true)
-              setMaskedApiKey(res.settings.maskedGeminiApiKey)
+              setMaskedApiKey(settingsRes.settings.maskedGeminiApiKey)
             }
+          }
+
+          if (prefsRes?.preferences?.valuationPreference) {
+            setValuationPreference(prefsRes.preferences.valuationPreference)
+            localStorage.setItem(
+              "masterdex_valuation_preference",
+              prefsRes.preferences.valuationPreference
+            )
           }
         } catch {}
       }
@@ -176,6 +174,7 @@ export const CollectorSettingsModal: React.FC<CollectorSettingsModalProps> = ({
     try {
       // Save locally
       localStorage.setItem("masterdex_favored_languages", JSON.stringify(favoredLanguages))
+      localStorage.setItem("masterdex_valuation_preference", valuationPreference)
       if (apiKey.trim()) {
         localStorage.setItem("masterdex_gemini_api_key", apiKey.trim())
       } else if (!hasSavedKey) {
@@ -184,11 +183,17 @@ export const CollectorSettingsModal: React.FC<CollectorSettingsModalProps> = ({
 
       // Save to server
       if (userId && userId !== "guest") {
-        await apiClient.patch("/api/collector/settings", {
-          userId,
-          geminiApiKey: apiKey.trim() ? apiKey.trim() : hasSavedKey ? undefined : null,
-          favoredLanguages,
-        })
+        await Promise.all([
+          apiClient.patch("/api/collector/settings", {
+            userId,
+            geminiApiKey: apiKey.trim() ? apiKey.trim() : hasSavedKey ? undefined : null,
+            favoredLanguages,
+          }),
+          apiClient.updateCollectorPreferences({
+            userId,
+            valuationPreference,
+          }),
+        ])
       }
 
       setSavedSuccess(true)
@@ -200,18 +205,6 @@ export const CollectorSettingsModal: React.FC<CollectorSettingsModalProps> = ({
       console.error("Failed to save settings", err)
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  const getLanguageLabel = (lang: string) => {
-    switch (lang.toLowerCase()) {
-      case "pt":
-        return t("settings.langPt")
-      case "ja":
-        return t("settings.langJa")
-      case "en":
-      default:
-        return t("settings.langEn")
     }
   }
 
@@ -236,145 +229,62 @@ export const CollectorSettingsModal: React.FC<CollectorSettingsModalProps> = ({
 
         <div className="space-y-5 pt-2">
           {/* Gemini API Key BYOK Section */}
-          <div className="space-y-2 rounded-xl bg-zinc-800/40 border border-zinc-800 p-3.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
-                <Key className="size-3.5 text-violet-400" />
-                {t("settings.byokTitle")}
-              </label>
-              {hasSavedKey && maskedApiKey && (
-                <Badge variant="outline" className="text-[10px] border-emerald-700 text-emerald-400">
-                  {t("settings.keyConfigured", { key: maskedApiKey })}
-                </Badge>
-              )}
-            </div>
-            <p className="text-[11px] text-zinc-400 leading-relaxed">
-              {t("settings.byokDescription")}
-            </p>
-
-            <div className="flex items-center gap-2 pt-1">
-              <div className="relative flex-1">
-                <Input
-                  type={showApiKey ? "text" : "password"}
-                  value={apiKey}
-                  onChange={(e) => {
-                    setApiKey(e.target.value)
-                    setTestResult({ status: "idle" })
-                  }}
-                  placeholder={hasSavedKey && maskedApiKey ? maskedApiKey : t("settings.apiKeyPlaceholder")}
-                  className="bg-zinc-950 border-zinc-700 text-xs pr-8 font-mono text-zinc-200 placeholder:text-zinc-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 cursor-pointer"
-                  title={showApiKey ? t("settings.hideKey") : t("settings.showKey")}
-                >
-                  {showApiKey ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                </button>
-              </div>
-
-              {(apiKey || hasSavedKey) && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleClearKey}
-                  className="border-zinc-700 hover:border-red-600 hover:text-red-400 text-zinc-400 size-9 p-0 cursor-pointer"
-                  title={t("settings.clearKey")}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleTestKey}
-                disabled={isTesting || !apiKey.trim()}
-                className="h-7 text-xs border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 cursor-pointer"
-              >
-                {isTesting ? (
-                  <>
-                    <Loader2 className="size-3 animate-spin mr-1.5 text-violet-400" />
-                    {t("settings.testingConnection")}
-                  </>
-                ) : (
-                  t("settings.testConnection")
-                )}
-              </Button>
-
-              {testResult.status === "success" && (
-                <div className="flex items-center gap-1.5 text-[11px] text-emerald-400">
-                  <CheckCircle2 className="size-3.5" />
-                  <span>{t("settings.testSuccess", { count: testResult.count ?? 0 })}</span>
-                </div>
-              )}
-
-              {testResult.status === "error" && (
-                <div className="flex items-center gap-1.5 text-[11px] text-red-400 max-w-[240px] truncate" title={testResult.message}>
-                  <XCircle className="size-3.5 shrink-0" />
-                  <span className="truncate">{t("settings.testFailed", { error: testResult.message ?? "" })}</span>
-                </div>
-              )}
-            </div>
-          </div>
+          <GeminiApiKeySection
+            apiKey={apiKey}
+            setApiKey={setApiKey}
+            hasSavedKey={hasSavedKey}
+            maskedApiKey={maskedApiKey}
+            isTesting={isTesting}
+            testResult={testResult}
+            onTestKey={handleTestKey}
+            onClearKey={handleClearKey}
+            onResetTestResult={() => setTestResult({ status: "idle" })}
+          />
 
           {/* Favored Languages Ordering */}
+          <LanguagePriorityList
+            favoredLanguages={favoredLanguages}
+            onMoveLanguage={handleMoveLanguage}
+          />
+
+          {/* Valuation Preference Selection */}
           <div className="space-y-2 rounded-xl bg-zinc-800/40 border border-zinc-800 p-3.5">
             <div className="flex items-center gap-1.5">
-              <Languages className="size-3.5 text-sky-400" />
+              <TrendingUp className="size-3.5 text-amber-400" />
               <label className="text-xs font-semibold text-zinc-200">
-                {t("settings.favoredLanguagesTitle")}
+                {t("settings.valuationPreferenceTitle")}
               </label>
             </div>
             <p className="text-[11px] text-zinc-400 leading-relaxed">
-              {t("settings.favoredLanguagesDesc")}
+              {t("settings.valuationPreferenceDesc")}
             </p>
-
-            <div className="space-y-1.5 pt-1">
-              {favoredLanguages.map((lang, index) => (
-                <div
-                  key={lang}
-                  className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-zinc-950/70 border border-zinc-800 text-xs"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-zinc-500 font-bold w-4">
-                      #{index + 1}
-                    </span>
-                    <span className="font-medium text-zinc-200">
-                      {getLanguageLabel(lang)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={index === 0}
-                      onClick={() => handleMoveLanguage(index, "up")}
-                      className="size-6 p-0 text-zinc-400 hover:text-zinc-100 disabled:opacity-30 cursor-pointer"
-                      title={t("settings.moveUp")}
-                    >
-                      <ArrowUp className="size-3" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={index === favoredLanguages.length - 1}
-                      onClick={() => handleMoveLanguage(index, "down")}
-                      className="size-6 p-0 text-zinc-400 hover:text-zinc-100 disabled:opacity-30 cursor-pointer"
-                      title={t("settings.moveDown")}
-                    >
-                      <ArrowDown className="size-3" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setValuationPreference("ligapokemon")}
+                className={cn(
+                  "flex flex-col items-start p-2.5 rounded-lg border text-left transition-all text-xs cursor-pointer",
+                  valuationPreference === "ligapokemon"
+                    ? "border-amber-500/80 bg-amber-950/30 text-amber-200"
+                    : "border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:border-zinc-700"
+                )}
+              >
+                <span className="font-semibold">{t("settings.valuationLigapokemonTitle")}</span>
+                <span className="text-[10px] text-zinc-500 mt-0.5">{t("settings.valuationLigapokemonDesc")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setValuationPreference("tcgplayer")}
+                className={cn(
+                  "flex flex-col items-start p-2.5 rounded-lg border text-left transition-all text-xs cursor-pointer",
+                  valuationPreference === "tcgplayer"
+                    ? "border-violet-500/80 bg-violet-950/30 text-violet-200"
+                    : "border-zinc-800 bg-zinc-950/60 text-zinc-400 hover:border-zinc-700"
+                )}
+              >
+                <span className="font-semibold">{t("settings.valuationTcgplayerTitle")}</span>
+                <span className="text-[10px] text-zinc-500 mt-0.5">{t("settings.valuationTcgplayerDesc")}</span>
+              </button>
             </div>
           </div>
 

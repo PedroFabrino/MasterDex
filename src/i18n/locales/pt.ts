@@ -203,6 +203,9 @@ export const pt: TranslationDictionary = {
     viewOnLigapokemonButton: 'LigaPokémon',
     ligapokemonCodeLabel: 'Código LigaPokémon',
     overrideCodePlaceholder: 'ex: SV1, DLR, 151',
+    valuationPreferenceLabel: 'Mercado de Avaliação',
+    valuationLigapokemon: 'LigaPokémon (BRL)',
+    valuationTcgplayer: 'TCGplayer (Global/USD)',
   },
   binderSearch: {
     placeholder: 'Buscar Pokémon pelo nome... (Ctrl+K)',
@@ -239,6 +242,12 @@ export const pt: TranslationDictionary = {
     langPt: 'Português (PT)',
     langEn: 'Inglês (EN)',
     langJa: 'Japonês (JA)',
+    valuationPreferenceTitle: 'Preferência de Mercado de Avaliação',
+    valuationPreferenceDesc: 'Escolha a fonte principal de cotações para pontuação de expansões e avaliação do portfólio.',
+    valuationLigapokemonTitle: 'LigaPokémon (BRL)',
+    valuationLigapokemonDesc: 'Preços do mercado de avulsas brasileiro em Reais (BRL)',
+    valuationTcgplayerTitle: 'TCGplayer (Global)',
+    valuationTcgplayerDesc: 'Preços do mercado global convertidos para BRL via câmbio diário',
     menuButton: 'Configurações',
   },
   scanner: {

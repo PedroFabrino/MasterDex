@@ -50,6 +50,7 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
       hidden_expansions TEXT NOT NULL DEFAULT '[]',
       gemini_api_key TEXT,
       favored_languages TEXT NOT NULL DEFAULT '["pt", "en", "ja"]',
+      valuation_preference TEXT NOT NULL DEFAULT 'ligapokemon',
       created_at INTEGER NOT NULL
     );
   `)
@@ -151,6 +152,7 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
     "hidden_expansions TEXT NOT NULL DEFAULT '[]'",
     "gemini_api_key TEXT",
     "favored_languages TEXT NOT NULL DEFAULT '[\"pt\", \"en\", \"ja\"]'",
+    "valuation_preference TEXT NOT NULL DEFAULT 'ligapokemon'",
   ]) {
     try {
       await client.execute(`ALTER TABLE collector_profiles ADD COLUMN ${col};`)

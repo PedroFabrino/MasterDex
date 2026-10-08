@@ -203,6 +203,9 @@ export const en: TranslationDictionary = {
     viewOnLigapokemonButton: 'LigaPokémon',
     ligapokemonCodeLabel: 'LigaPokémon Code',
     overrideCodePlaceholder: 'e.g. SV1, DLR, 151',
+    valuationPreferenceLabel: 'Valuation Market',
+    valuationLigapokemon: 'LigaPokémon (BRL)',
+    valuationTcgplayer: 'TCGplayer (Global/USD)',
   },
   binderSearch: {
     placeholder: 'Search Pokémon by name... (Ctrl+K)',
@@ -239,6 +242,12 @@ export const en: TranslationDictionary = {
     langPt: 'Portuguese (PT)',
     langEn: 'English (EN)',
     langJa: 'Japanese (JA)',
+    valuationPreferenceTitle: 'Valuation Market Preference',
+    valuationPreferenceDesc: 'Choose the primary pricing provider for expansion scoring and binder portfolio valuation.',
+    valuationLigapokemonTitle: 'LigaPokémon (BRL)',
+    valuationLigapokemonDesc: 'Brazilian singles market prices in Reais (BRL)',
+    valuationTcgplayerTitle: 'TCGplayer (Global)',
+    valuationTcgplayerDesc: 'Global market prices normalized to BRL via daily exchange rate',
     menuButton: 'Collector Settings',
   },
   scanner: {

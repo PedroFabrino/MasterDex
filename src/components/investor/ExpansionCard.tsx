@@ -128,7 +128,14 @@ export function ExpansionCard({
         {/* Financial & Set Metrics Grid */}
         <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-zinc-950/60 border border-zinc-800/80 text-xs">
           <div>
-            <span className="text-zinc-500 text-[11px] block">{t("investor.topChaseLabel")}</span>
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-500 text-[11px] block">{t("investor.topChaseLabel")}</span>
+              {expansion.valuationPreference && (
+                <span className="text-[9px] uppercase font-mono px-1 py-0 rounded bg-zinc-800 text-zinc-400">
+                  {expansion.valuationPreference === "ligapokemon" ? "Liga" : "TCG"}
+                </span>
+              )}
+            </div>
             <span className="font-semibold text-amber-400 truncate block font-mono">
               {expansion.chaseCardPrice ? formatBRL(expansion.chaseCardPrice) : "—"}
             </span>
