@@ -29,6 +29,12 @@ export function ExpansionDetailModal({
   } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [isScrapingLiga, setIsScrapingLiga] = useState(false)
+  const [codeOverride, setCodeOverride] = useState(expansion?.ligapokemonCode || "")
+
+  useEffect(() => {
+    setCodeOverride(expansion?.ligapokemonCode || "")
+  }, [expansion])
 
   const handleSyncPrices = async () => {
     if (!expansion || isSyncing) return
@@ -44,6 +50,29 @@ export function ExpansionDetailModal({
       console.warn("Failed to sync prices:", err)
     } finally {
       setIsSyncing(false)
+    }
+  }
+
+  const handleScrapeLiga = async (force = false) => {
+    if (!expansion || isScrapingLiga) return
+    setIsScrapingLiga(true)
+    try {
+      const res = await apiClient.scrapeLigapokemon(expansion.slug, {
+        code: codeOverride.trim() || undefined,
+        force,
+      })
+      if (res?.expansion?.ligapokemonCode) {
+        setCodeOverride(res.expansion.ligapokemonCode)
+      }
+      const data = await apiClient.getExpansionDetails(expansion.slug)
+      setDetailData({
+        secretCards: data.secretCards || [],
+        cards: data.cards || [],
+      })
+    } catch (err) {
+      console.warn("Failed to scrape LigaPokemon:", err)
+    } finally {
+      setIsScrapingLiga(false)
     }
   }
 
@@ -86,6 +115,12 @@ export function ExpansionDetailModal({
     return new Intl.NumberFormat(numberLocale, { style: "currency", currency: "BRL" }).format(val)
   }
 
+  const ligaUrl =
+    expansion.ligapokemonUrl ||
+    (codeOverride
+      ? `https://www.ligapokemon.com.br/?view=cards/search&card=ed=${encodeURIComponent(codeOverride)}`
+      : null)
+
   const cardsToDisplay = detailData?.secretCards && detailData.secretCards.length > 0
     ? detailData.secretCards
     : detailData?.cards || []
@@ -114,7 +149,7 @@ export function ExpansionDetailModal({
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -128,6 +163,47 @@ export function ExpansionDetailModal({
                   {isSyncing ? t("investor.syncingPrices") : t("investor.syncPricesButton")}
                 </span>
               </Button>
+
+              {ligaUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="border-amber-600/50 text-amber-400 bg-amber-950/40 hover:bg-amber-900/60 hover:text-amber-200 text-xs"
+                  title={t("investor.viewOnLigapokemonTooltip")}
+                >
+                  <a href={ligaUrl} target="_blank" rel="noreferrer">
+                    <ExternalLink className="size-3.5" />
+                    <span className="hidden sm:inline">{t("investor.viewOnLigapokemonButton")}</span>
+                  </a>
+                </Button>
+              )}
+
+              <div className="flex items-center gap-1.5 bg-zinc-950/60 border border-zinc-800 rounded-md px-2 py-1 text-xs">
+                <span className="text-[11px] text-zinc-500 font-medium">{t("investor.ligapokemonCodeLabel")}:</span>
+                <input
+                  type="text"
+                  value={codeOverride}
+                  onChange={(e) => setCodeOverride(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleScrapeLiga(true)
+                  }}
+                  placeholder={t("investor.overrideCodePlaceholder")}
+                  className="w-16 px-1.5 py-0.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-amber-300 font-mono focus:border-amber-500 focus:outline-none uppercase"
+                  title={t("investor.ligapokemonCodeLabel")}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleScrapeLiga(true)}
+                  disabled={isScrapingLiga || !codeOverride.trim()}
+                  className="h-6 px-1.5 text-[10px] text-amber-400 hover:text-amber-300 hover:bg-amber-950/40"
+                  title={t("investor.analyzeMarketButton")}
+                >
+                  <RefreshCw className={cn("size-3", isScrapingLiga && "animate-spin")} />
+                </Button>
+              </div>
+
               {onTriggerScrape && (
                 <Button
                   variant="outline"

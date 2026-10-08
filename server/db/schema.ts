@@ -42,6 +42,7 @@ export const expansions = sqliteTable('expansions', {
   lastScrapedAt: integer('last_scraped_at', { mode: 'timestamp' }).notNull(),
   logoUrl: text('logo_url'),
   symbolUrl: text('symbol_url'),
+  ligapokemonCode: text('ligapokemon_code'),
 })
 
 export const cards = sqliteTable('cards', {

@@ -28,6 +28,7 @@ export interface Expansion {
   lastScrapedAt: number
   logoUrl?: string | null
   symbolUrl?: string | null
+  ligapokemonCode?: string | null
   collectionGapYield?: number
   category?: ExpansionCategory
 }

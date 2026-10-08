@@ -199,6 +199,10 @@ export const pt: TranslationDictionary = {
     syncingPrices: 'Atualizando Cotações...',
     syncPricesSuccess: 'Cotações atualizadas com sucesso!',
     nativeQuote: '{provider}: {price}',
+    viewOnLigapokemonTooltip: 'Abrir na LigaPokémon (mercado brasileiro de avulsas)',
+    viewOnLigapokemonButton: 'LigaPokémon',
+    ligapokemonCodeLabel: 'Código LigaPokémon',
+    overrideCodePlaceholder: 'ex: SV1, DLR, 151',
   },
   binderSearch: {
     placeholder: 'Buscar Pokémon pelo nome... (Ctrl+K)',

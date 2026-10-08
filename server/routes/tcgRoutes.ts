@@ -7,6 +7,7 @@ import { investmentService } from '../services/investmentService.js'
 import { pricingRepository } from '../repositories/pricingRepository.js'
 import { exchangeRateService } from '../services/exchangeRateService.js'
 import { tcgdexPricingService } from '../services/tcgdexPricingService.js'
+import { ligapokemonService } from '../services/ligapokemonService.js'
 
 
 export const tcgRoutes = new Hono()
@@ -91,9 +92,19 @@ tcgRoutes.get('/expansions', async (c) => {
     })
 
 
+    const enrichedList = list.map((exp) => {
+      const ligapokemonCode = ligapokemonService.resolveEditionCode(exp)
+      const ligapokemonUrl = ligapokemonCode ? ligapokemonService.getSearchUrl(ligapokemonCode) : null
+      return {
+        ...exp,
+        ligapokemonCode,
+        ligapokemonUrl,
+      }
+    })
+
     return c.json({
-      expansions: list,
-      count: list.length,
+      expansions: enrichedList,
+      count: enrichedList.length,
       filters: {
         category,
         rarity,
@@ -134,8 +145,15 @@ tcgRoutes.get('/expansions/:slug', async (c) => {
       prices: pricesMap.get(card.id) || [],
     }))
 
+    const ligapokemonCode = ligapokemonService.resolveEditionCode(expansion)
+    const ligapokemonUrl = ligapokemonCode ? ligapokemonService.getSearchUrl(ligapokemonCode) : null
+
     return c.json({
-      expansion,
+      expansion: {
+        ...expansion,
+        ligapokemonCode,
+        ligapokemonUrl,
+      },
       secretCards: secretsWithPrices,
       cards: cardsWithPrices,
       rates,
@@ -164,6 +182,35 @@ tcgRoutes.post('/expansions/:slug/sync-prices', async (c) => {
     })
   } catch (error: any) {
     return c.json({ error: error?.message || 'Failed to sync expansion prices' }, 500)
+  }
+})
+
+// POST /api/tcg/expansions/:slug/scrape-ligapokemon
+tcgRoutes.post('/expansions/:slug/scrape-ligapokemon', async (c) => {
+  const slug = c.req.param('slug')
+  try {
+    const expansion = await expansionsRepository.getExpansionBySlug(slug)
+    if (!expansion) {
+      return c.json({ error: 'Expansion not found' }, 404)
+    }
+
+    const body = await c.req.json().catch(() => ({}))
+    const code = body?.code
+    const force = Boolean(body?.force)
+
+    const result = await ligapokemonService.scrapeExpansionPrices(expansion.id, {
+      codeOverride: code,
+      force,
+    })
+
+    const updated = await expansionsRepository.getExpansionById(expansion.id)
+
+    return c.json({
+      ...result,
+      expansion: updated,
+    })
+  } catch (error: any) {
+    return c.json({ error: error?.message || 'Failed to scrape LigaPokémon' }, 500)
   }
 })
 

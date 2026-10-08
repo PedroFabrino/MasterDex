@@ -75,6 +75,7 @@ export class ExpansionsRepository {
           lastScrapedAt: data.lastScrapedAt,
           logoUrl: data.logoUrl,
           symbolUrl: data.symbolUrl,
+          ligapokemonCode: data.ligapokemonCode !== undefined ? data.ligapokemonCode : existing.ligapokemonCode,
         })
         .where(eq(expansions.id, existing.id))
 
@@ -85,6 +86,10 @@ export class ExpansionsRepository {
     await db.insert(expansions).values(data)
     const created = await this.getExpansionById(data.id)
     return created!
+  }
+
+  async updateLigapokemonCode(id: string, code: string): Promise<void> {
+    await db.update(expansions).set({ ligapokemonCode: code }).where(eq(expansions.id, id))
   }
 
   async getAllExpansions(): Promise<ExpansionRecord[]> {

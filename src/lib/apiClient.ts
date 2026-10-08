@@ -220,6 +220,17 @@ export const apiClient = {
     return res.json()
   },
 
+  async scrapeLigapokemon(slug: string, options?: { code?: string; force?: boolean }): Promise<any> {
+    const res = await fetch(`/api/tcg/expansions/${encodeURIComponent(slug)}/scrape-ligapokemon`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(options || {}),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || "Failed to scrape LigaPokémon")
+    return data
+  },
+
   async loginWithGoogle(
     credential: string,
     signal?: AbortSignal

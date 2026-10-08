@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Sparkles, RefreshCw, Eye, EyeOff } from "lucide-react"
+import { Sparkles, RefreshCw, Eye, EyeOff, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTranslation } from "@/i18n"
 import type { Expansion } from "../../../shared/types.js"
@@ -40,6 +40,12 @@ export function ExpansionCard({
       ? `${expansion.logoUrl}.png`
       : expansion.logoUrl
     : null
+
+  const ligaUrl =
+    expansion.ligapokemonUrl ||
+    (expansion.ligapokemonCode
+      ? `https://www.ligapokemon.com.br/?view=cards/search&card=ed=${encodeURIComponent(expansion.ligapokemonCode)}`
+      : null)
 
   return (
     <Card
@@ -168,6 +174,23 @@ export function ExpansionCard({
             <RefreshCw className={cn("size-3.5", isScraping && "animate-spin")} />
             <span className="hidden sm:inline">{t("investor.analyzeMarketButton")}</span>
           </Button>
+
+          {ligaUrl && (
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="border-amber-600/50 text-amber-400 bg-amber-950/20 hover:bg-amber-900/40 hover:text-amber-200 text-xs h-8 px-2"
+              title={t("investor.viewOnLigapokemonTooltip")}
+            >
+              <a href={ligaUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="size-3.5" />
+                <span className="hidden sm:inline ml-1 font-mono text-[11px]">
+                  {expansion.ligapokemonCode || t("investor.viewOnLigapokemonButton")}
+                </span>
+              </a>
+            </Button>
+          )}
 
           {onToggleHide && (
             <Button

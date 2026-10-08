@@ -84,6 +84,7 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
       avg_secret_price REAL,
       logo_url TEXT,
       symbol_url TEXT,
+      ligapokemon_code TEXT,
       last_scraped_at INTEGER NOT NULL
     );
   `)
@@ -166,7 +167,7 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
     }
   }
 
-  for (const col of ['logo_url TEXT', 'symbol_url TEXT']) {
+  for (const col of ['logo_url TEXT', 'symbol_url TEXT', 'ligapokemon_code TEXT']) {
     try {
       await client.execute(`ALTER TABLE expansions ADD COLUMN ${col};`)
     } catch {

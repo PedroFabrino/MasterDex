@@ -208,6 +208,10 @@ export interface TranslationDictionary {
     syncingPrices: string
     syncPricesSuccess: string
     nativeQuote: string
+    viewOnLigapokemonTooltip: string
+    viewOnLigapokemonButton: string
+    ligapokemonCodeLabel: string
+    overrideCodePlaceholder: string
   }
   binderSearch: {
     placeholder: string
