@@ -267,6 +267,7 @@ describe('Server-Side Collection Gap Yield & Expansion Catalog API', () => {
         rarity: 'any',
         sort: 'score',
         userId: null,
+        preference: null,
       })
     })
 

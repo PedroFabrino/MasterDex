@@ -305,5 +305,22 @@ export interface TranslationDictionary {
     reScanButton: string
     noCardsDetected: string
   }
+  portfolio: {
+    pillTooltip: string
+    modalTitle: string
+    modalDescription: string
+    totalValueLabel: string
+    usdEquivalentLabel: string
+    cardsValuedLabel: string
+    cardsCountUnit: string
+    topCardWorthLabel: string
+    marketComparisonTitle: string
+    comparisonLiga: string
+    comparisonTcg: string
+    emptyTitle: string
+    emptyDescription: string
+    topCardsTitle: string
+    regionalBreakdownTitle: string
+  }
 }
 

@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { UserMenu } from "@/components/auth/UserMenu"
 import { type CollectorProfile } from "@/components/auth/AuthModal"
+import { PortfolioPill } from "@/components/portfolio/PortfolioPill"
+import type { PortfolioSummary } from "../../shared/types.js"
 import { useTranslation } from "@/i18n"
 import { cn } from "@/lib/utils"
 
@@ -15,6 +17,8 @@ interface AppHeaderProps {
   totalCards: number
   totalPokemonCount: number
   totalPct: string | number
+  portfolio?: PortfolioSummary | null
+  onOpenPortfolioModal?: () => void
   onOpenImportModal: () => void
   onOpenSettingsModal?: () => void
   onOpenScannerModal?: () => void
@@ -34,6 +38,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   totalCards,
   totalPokemonCount,
   totalPct,
+  portfolio,
+  onOpenPortfolioModal,
   onOpenImportModal,
   onOpenSettingsModal,
   onOpenScannerModal,
@@ -180,6 +186,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </span>
           </div>
 
+          {/* Portfolio Valuation Pill */}
+          {onOpenPortfolioModal && (
+            <PortfolioPill portfolio={portfolio ?? null} onClick={onOpenPortfolioModal} />
+          )}
 
           <Badge
             variant="outline"

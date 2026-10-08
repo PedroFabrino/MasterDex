@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { collectorRepository } from '../repositories/collectorRepository.js'
+import { portfolioService } from '../services/portfolioService.js'
 
 export const collectorRoutes = new Hono()
 
@@ -48,6 +49,22 @@ collectorRoutes.patch('/preferences', async (c) => {
     })
   } catch (error: any) {
     return c.json({ error: error?.message || 'Failed to update preferences' }, 500)
+  }
+})
+
+// GET /api/collector/portfolio
+collectorRoutes.get('/portfolio', async (c) => {
+  const userId = c.req.query('userId') || 'guest'
+  const preference = (c.req.query('preference') as any) || undefined
+  try {
+    const portfolio = await portfolioService.getPortfolioSummary(userId, preference)
+    return c.json({
+      success: true,
+      userId,
+      portfolio,
+    })
+  } catch (error: any) {
+    return c.json({ error: error?.message || 'Failed to get portfolio summary' }, 500)
   }
 })
 

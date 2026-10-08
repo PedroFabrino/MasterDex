@@ -4,6 +4,7 @@ import { type CollectorProfile } from "@/components/auth/AuthModal"
 import { mergeCloudAndLocalCollection } from "@/lib/collectionMerge"
 import { apiClient } from "@/lib/apiClient"
 import { mapCollectionItemsToRecord, toBatchSyncEntry, toCollectedSlot } from "@/lib/cardMapping"
+import type { PortfolioSummary } from "../../shared/types"
 
 export interface UseCollectionOptions {
   currentUser: CollectorProfile | null
@@ -17,6 +18,24 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
     } catch {}
     return {}
   })
+
+  const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null)
+
+  const refreshPortfolio = useCallback(async () => {
+    const userId = currentUser?.id || "guest"
+    try {
+      const data = await apiClient.getPortfolioSummary(userId)
+      if (data?.portfolio) {
+        setPortfolioSummary(data.portfolio)
+      }
+    } catch {
+      // ignore
+    }
+  }, [currentUser?.id])
+
+  useEffect(() => {
+    refreshPortfolio()
+  }, [refreshPortfolio, currentUser?.id])
 
   // Persist collection updates to localStorage
   useEffect(() => {
@@ -70,9 +89,10 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
           },
           currentUser.sessionToken
         )
+        .then(() => refreshPortfolio())
         .catch(() => {})
     },
-    [currentUser]
+    [currentUser, refreshPortfolio]
   )
 
   const mergeAndSyncUser = useCallback(
@@ -92,9 +112,10 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
           const entries = slotsToBatchSync.map(({ pokemonId, slot }) => toBatchSyncEntry(pokemonId, slot))
           await apiClient.batchSyncCollection(profile.id, entries, profile.sessionToken).catch(() => {})
         }
+        await refreshPortfolio()
       } catch {}
     },
-    []
+    [refreshPortfolio]
   )
 
   const markSlotCollected = useCallback(
@@ -148,6 +169,8 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
     totalCollected,
     totalCards,
     totalPct,
+    portfolioSummary,
+    refreshPortfolio,
     markSlotCollected,
     handleSelectCard,
     handleUnmark,

@@ -39,6 +39,7 @@ export function App() {
     totalCollected,
     totalCards,
     totalPct,
+    portfolioSummary,
   } = useCollection({ currentUser })
 
   const { currentPage, totalPages, pagePokemon, currentRegion, jumpToPage } = useBinderNavigation()
@@ -48,6 +49,7 @@ export function App() {
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
+  const [portfolioModalOpen, setPortfolioModalOpen] = useState(false)
   const [scannerModalOpen, setScannerModalOpen] = useState(false)
   const [stagingModalOpen, setStagingModalOpen] = useState(false)
   const [stagedPages, setStagedPages] = useState<CapturedBinderPage[]>([])
@@ -139,6 +141,8 @@ export function App() {
             totalCards={totalCards}
             totalPokemonCount={POKEMON.length}
             totalPct={totalPct}
+            portfolio={portfolioSummary}
+            onOpenPortfolioModal={() => setPortfolioModalOpen(true)}
             onOpenImportModal={() => setImportModalOpen(true)}
             onOpenSettingsModal={() => setSettingsModalOpen(true)}
             onOpenScannerModal={() => setScannerModalOpen(true)}
@@ -201,6 +205,9 @@ export function App() {
         settingsModalOpen={settingsModalOpen}
         onCloseSettingsModal={() => setSettingsModalOpen(false)}
         onOpenSettingsModal={() => setSettingsModalOpen(true)}
+        portfolioModalOpen={portfolioModalOpen}
+        onClosePortfolioModal={() => setPortfolioModalOpen(false)}
+        portfolio={portfolioSummary}
         scannerModalOpen={scannerModalOpen}
         onCloseScannerModal={() => setScannerModalOpen(false)}
         onProceedToReview={(pages) => {

@@ -3,6 +3,7 @@ import type {
   CollectorProfile,
   CollectorPreferences,
   TcgCardSearchResult,
+  PortfolioSummary,
 } from "../../shared/types"
 import type { BatchSyncEntry } from "./cardMapping"
 
@@ -197,6 +198,19 @@ export const apiClient = {
       body: JSON.stringify(payload),
     })
     if (!res.ok) throw new Error(`Failed to update preferences (${res.status})`)
+    return res.json()
+  },
+
+  async getPortfolioSummary(
+    userId?: string,
+    preference?: 'ligapokemon' | 'tcgplayer'
+  ): Promise<{ userId: string; portfolio: PortfolioSummary }> {
+    const queryParts: string[] = []
+    if (userId) queryParts.push(`userId=${encodeURIComponent(userId)}`)
+    if (preference) queryParts.push(`preference=${encodeURIComponent(preference)}`)
+    const queryStr = queryParts.length > 0 ? `?${queryParts.join("&")}` : ""
+    const res = await fetch(`/api/collector/portfolio${queryStr}`)
+    if (!res.ok) throw new Error(`Failed to load portfolio summary (${res.status})`)
     return res.json()
   },
 

@@ -122,3 +122,33 @@ export interface CardWithPrices extends Card {
   prices?: CardPrice[]
 }
 
+export interface PortfolioTopCard {
+  pokedexId: number
+  cardId: string
+  name: string
+  imageUrl?: string | null
+  priceInBrl: number
+  priceInUsd: number
+  provider: string
+}
+
+export interface PortfolioRegionalBreakdown {
+  generation: number
+  regionName: string
+  cardCount: number
+  totalBrl: number
+  percentage: number
+}
+
+export interface PortfolioSummary {
+  totalBrl: number
+  totalUsd: number
+  cardCount: number
+  topCards: PortfolioTopCard[]
+  regionalDistribution: PortfolioRegionalBreakdown[]
+  comparison: {
+    ligapokemonBrl: number
+    tcgplayerBrl: number
+  }
+}
+

@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm'
+import { eq, and, isNotNull } from 'drizzle-orm'
 import { db, rawClient } from '../db/index.js'
 import {
   collectorProfiles,
@@ -88,6 +88,25 @@ export class CollectorRepository {
       .select()
       .from(userPokemon)
       .where(eq(userPokemon.userId, userId))
+  }
+
+  async getAssignedCollectedCards(userId: string) {
+    return await db
+      .select({
+        pokedexId: userPokemon.pokedexId,
+        cardId: userPokemon.cardId,
+        cardName: userPokemon.cardName,
+        cardImageUrl: userPokemon.cardImageUrl,
+        cardLanguage: userPokemon.cardLanguage,
+      })
+      .from(userPokemon)
+      .where(
+        and(
+          eq(userPokemon.userId, userId),
+          eq(userPokemon.collected, true),
+          isNotNull(userPokemon.cardId)
+        )
+      )
   }
 
   async setUserPokemon(

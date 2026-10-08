@@ -6,6 +6,8 @@ import { AuthModal, type CollectorProfile } from "@/components/auth/AuthModal"
 import { CollectorSettingsModal } from "@/components/settings/CollectorSettingsModal"
 import { BinderScannerModal, type CapturedBinderPage } from "@/components/scanner/BinderScannerModal"
 import { StagingReviewModal } from "@/components/scanner/StagingReviewModal"
+import { PortfolioModal } from "@/components/portfolio/PortfolioModal"
+import type { PortfolioSummary } from "../../shared/types.js"
 
 interface AppModalsProps {
   modalPokemon: Pokemon | null
@@ -26,6 +28,9 @@ interface AppModalsProps {
   settingsModalOpen: boolean
   onCloseSettingsModal: () => void
   onOpenSettingsModal?: () => void
+  portfolioModalOpen?: boolean
+  onClosePortfolioModal?: () => void
+  portfolio?: PortfolioSummary | null
   scannerModalOpen: boolean
   onCloseScannerModal: () => void
   onProceedToReview: (pages: CapturedBinderPage[]) => void
@@ -54,6 +59,9 @@ export const AppModals: React.FC<AppModalsProps> = ({
   settingsModalOpen,
   onCloseSettingsModal,
   onOpenSettingsModal,
+  portfolioModalOpen,
+  onClosePortfolioModal,
+  portfolio,
   scannerModalOpen,
   onCloseScannerModal,
   onProceedToReview,
@@ -91,6 +99,11 @@ export const AppModals: React.FC<AppModalsProps> = ({
       open={settingsModalOpen}
       onClose={onCloseSettingsModal}
       userId={currentUser?.id}
+    />
+    <PortfolioModal
+      open={Boolean(portfolioModalOpen)}
+      onClose={onClosePortfolioModal ?? (() => {})}
+      portfolio={portfolio ?? null}
     />
     <BinderScannerModal
       open={scannerModalOpen}
