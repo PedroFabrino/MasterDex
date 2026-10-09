@@ -182,7 +182,7 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl bg-zinc-950 border-zinc-800 text-zinc-100 p-4 sm:p-6 overflow-hidden">
+      <DialogContent className="sm:max-w-4xl lg:max-w-5xl w-full max-h-[92vh] overflow-y-auto bg-zinc-950 border-zinc-800 text-zinc-100 p-4 sm:p-6">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
