@@ -168,8 +168,10 @@ Respond ONLY with valid JSON adhering strictly to this schema:
     }
 
     const prompt = this.buildVisionPrompt(layout, config.totalSlots)
-    const model = process.env.GEMINI_VISION_MODEL || 'gemini-1.5-flash'
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`
+    const preferredModel = process.env.GEMINI_VISION_MODEL || 'gemini-3.8-flash'
+    const candidateModels = Array.from(
+      new Set([preferredModel, 'gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'])
+    )
 
     const requestBody = {
       contents: [
@@ -191,19 +193,38 @@ Respond ONLY with valid JSON adhering strictly to this schema:
       },
     }
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
-    })
+    let lastError: Error | null = null
+    let jsonResponse: any = null
 
-    if (!res.ok) {
-      const errJson = (await res.json().catch(() => ({}))) as any
-      const msg = errJson?.error?.message || `Google Gemini API returned HTTP ${res.status}`
-      throw new Error(`Gemini Vision error: ${msg}`)
+    for (const model of candidateModels) {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (!res.ok) {
+        const errJson = (await res.json().catch(() => ({}))) as any
+        const msg = errJson?.error?.message || `Google Gemini API returned HTTP ${res.status}`
+        lastError = new Error(`Gemini Vision error: ${msg}`)
+
+        if (res.status === 404 || msg.includes('not found') || msg.includes('not supported')) {
+          continue
+        }
+
+        throw lastError
+      }
+
+      jsonResponse = (await res.json()) as any
+      break
     }
 
-    const jsonResponse = (await res.json()) as any
+    if (!jsonResponse) {
+      throw lastError || new Error('Gemini Vision failed to generate response')
+    }
+
     const rawContent =
       jsonResponse?.candidates?.[0]?.content?.parts?.[0]?.text || '{"slots":[]}'
 

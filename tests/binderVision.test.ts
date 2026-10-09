@@ -218,7 +218,62 @@ describe('Backend Binder Vision API & Grid Recognition (Ticket #29 / Spec #27)',
         expect(body.slots[0].pokedexId).toBe(25)
 
         expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining('gemini-1.5-flash:generateContent?key=AIzaSyExplicitTestKey'),
+          expect.stringContaining('gemini-3.8-flash:generateContent?key=AIzaSyExplicitTestKey'),
+          expect.any(Object)
+        )
+      } finally {
+        globalThis.fetch = globalFetch
+      }
+    })
+
+    it('falls back to next model candidate when primary model is not found/supported', async () => {
+      const globalFetch = globalThis.fetch
+      let callCount = 0
+      const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+        callCount++
+        if (url.includes('gemini-3.8-flash')) {
+          return {
+            ok: false,
+            status: 404,
+            json: async () => ({
+              error: { message: 'models/gemini-3.8-flash is not found for API version v1beta' },
+            }),
+          }
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            candidates: [
+              {
+                content: {
+                  parts: [{ text: JSON.stringify({ slots: [] }) }],
+                },
+              },
+            ],
+          }),
+        }
+      })
+      globalThis.fetch = mockFetch
+
+      try {
+        const res = await app.request('/api/binder/scan-page', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: dummyImage,
+            apiKey: 'AIzaSyFallbackKey',
+          }),
+        })
+        expect(res.status).toBe(200)
+        expect(callCount).toBe(2)
+        expect(mockFetch).toHaveBeenNthCalledWith(
+          1,
+          expect.stringContaining('gemini-3.8-flash:generateContent?key=AIzaSyFallbackKey'),
+          expect.any(Object)
+        )
+        expect(mockFetch).toHaveBeenNthCalledWith(
+          2,
+          expect.stringContaining('gemini-2.5-flash:generateContent?key=AIzaSyFallbackKey'),
           expect.any(Object)
         )
       } finally {
