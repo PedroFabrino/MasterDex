@@ -299,6 +299,8 @@ export const pt: TranslationDictionary = {
     slotsUpdated: '{count} bolsos atualizados',
     reScanButton: 'Escanear Mais Páginas',
     noCardsDetected: 'Nenhuma carta Pokémon detectada nesta página.',
+    scanFailedPrompt: 'Falha ao escanear página. Verifique sua chave de API Gemini nas Configurações.',
+    retryScanAction: 'Tentar Novamente',
   },
   portfolio: {
     pillTooltip: 'Valor da Pasta: {brl} ({usd})',

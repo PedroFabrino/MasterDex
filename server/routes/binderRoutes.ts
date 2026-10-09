@@ -34,8 +34,11 @@ binderRoutes.post('/scan-page', async (c) => {
     }
 
     // Fall back to server environment variable if configured
-    if (!effectiveApiKey && process.env.GEMINI_API_KEY) {
-      effectiveApiKey = process.env.GEMINI_API_KEY
+    if (!effectiveApiKey) {
+      effectiveApiKey =
+        process.env.GEMINI_API_KEY ||
+        process.env.GOOGLE_API_KEY ||
+        process.env.VITE_GEMINI_API_KEY
     }
 
     if (!effectiveApiKey) {

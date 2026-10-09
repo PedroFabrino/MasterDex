@@ -16,6 +16,8 @@ import {
   Loader2,
   Sparkles,
   Database,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react"
 import { useTranslation } from "@/i18n"
 import { apiClient } from "@/lib/apiClient"
@@ -47,6 +49,57 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
   const [isSaving, setIsSaving] = useState(false)
   const [syncSummary, setSyncSummary] = useState<number | null>(null)
   const [editingSlot, setEditingSlot] = useState<ScannedSlotResult | null>(null)
+  const [scanError, setScanError] = useState<string | null>(null)
+
+  const scanAllPages = useCallback(async () => {
+    setIsAnalyzing(true)
+    setScanError(null)
+    const results: Record<string, ScannedSlotResult[]> = {}
+
+    for (const page of pages) {
+      try {
+        let localApiKey: string | undefined = undefined
+        try {
+          localApiKey = localStorage.getItem("masterdex_gemini_api_key") || undefined
+        } catch {}
+
+        const res = await apiClient.post<BinderScanResponse>("/api/binder/scan-page", {
+          image: page.image,
+          layout: page.layout,
+          userId,
+          apiKey: localApiKey,
+        })
+        if (res?.slots) {
+          results[page.id] = res.slots
+        }
+      } catch (err: any) {
+        console.error("Scan page error:", err)
+        setScanError(err?.message || t("staging.scanFailedPrompt"))
+        // Default empty slots on error
+        const total =
+          page.layout === "2x2"
+            ? 4
+            : page.layout === "4x3"
+              ? 12
+              : page.layout === "4x4"
+                ? 16
+                : 9
+        results[page.id] = Array.from({ length: total }).map((_, i) => ({
+          slotIndex: i,
+          pokedexId: null,
+          pokemonName: "",
+          cardName: "",
+          collectorNumber: null,
+          setName: null,
+          confidence: 0,
+          empty: true,
+        }))
+      }
+    }
+
+    setPageResults((prev) => ({ ...prev, ...results }))
+    setIsAnalyzing(false)
+  }, [pages, userId, t])
 
   // Scan all captured pages on open
   useEffect(() => {
@@ -54,55 +107,8 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
 
     setSyncSummary(null)
     setPageIndex(0)
-
-    const scanAllPages = async () => {
-      setIsAnalyzing(true)
-      const results: Record<string, ScannedSlotResult[]> = {}
-
-      for (const page of pages) {
-        if (pageResults[page.id]) {
-          results[page.id] = pageResults[page.id]
-          continue
-        }
-        try {
-          const res = await apiClient.post<BinderScanResponse>("/api/binder/scan-page", {
-            image: page.image,
-            layout: page.layout,
-            userId,
-          })
-          if (res?.slots) {
-            results[page.id] = res.slots
-          }
-        } catch (err) {
-          console.error("Scan page error:", err)
-          // Default empty slots on error
-          const total =
-            page.layout === "2x2"
-              ? 4
-              : page.layout === "4x3"
-                ? 12
-                : page.layout === "4x4"
-                  ? 16
-                  : 9
-          results[page.id] = Array.from({ length: total }).map((_, i) => ({
-            slotIndex: i,
-            pokedexId: null,
-            pokemonName: "",
-            cardName: "",
-            collectorNumber: null,
-            setName: null,
-            confidence: 0,
-            empty: true,
-          }))
-        }
-      }
-
-      setPageResults((prev) => ({ ...prev, ...results }))
-      setIsAnalyzing(false)
-    }
-
     scanAllPages()
-  }, [open, pages, userId])
+  }, [open, scanAllPages])
 
   const currentPage = pages[pageIndex]
   const currentSlots = currentPage ? pageResults[currentPage.id] || [] : []
@@ -255,6 +261,24 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
           </div>
         ) : (
           <div className="space-y-4 pt-1">
+            {scanError && (
+              <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-amber-950/40 border border-amber-800/60 text-amber-200 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <AlertCircle className="size-4 text-amber-400 shrink-0" />
+                  <span className="truncate">{scanError}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => scanAllPages()}
+                  className="h-7 px-2.5 text-[11px] border-amber-700 bg-amber-900/40 hover:bg-amber-800 text-amber-100 shrink-0 cursor-pointer"
+                >
+                  <RefreshCw className="size-3 mr-1" />
+                  {t("staging.retryScanAction")}
+                </Button>
+              </div>
+            )}
+
             {/* Visual Staging Grid */}
             <div
               className={`grid gap-2.5 p-2 bg-zinc-900/60 rounded-xl border border-zinc-800 max-h-[55vh] overflow-y-auto ${

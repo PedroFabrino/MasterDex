@@ -299,6 +299,8 @@ export const en: TranslationDictionary = {
     slotsUpdated: '{count} slots updated',
     reScanButton: 'Scan More Pages',
     noCardsDetected: 'No Pokémon cards detected on this page.',
+    scanFailedPrompt: 'Failed to scan binder page. Please check your Gemini API key in Settings.',
+    retryScanAction: 'Retry Scan',
   },
   portfolio: {
     pillTooltip: 'Portfolio Value: {brl} ({usd})',

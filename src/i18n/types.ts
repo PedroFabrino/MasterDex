@@ -308,6 +308,8 @@ export interface TranslationDictionary {
     slotsUpdated: string
     reScanButton: string
     noCardsDetected: string
+    scanFailedPrompt: string
+    retryScanAction: string
   }
   portfolio: {
     pillTooltip: string
