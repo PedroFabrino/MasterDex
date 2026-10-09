@@ -87,6 +87,7 @@ export interface UserPokemon {
   cardName?: string | null
   cardImageUrl?: string | null
   cardLanguage?: string | null
+  cardCondition?: string | null
   updatedAt: number
 }
 
@@ -115,6 +116,7 @@ export interface CardPrice {
   id: string
   cardId: string
   provider: string
+  condition?: string
   nativePrice: number
   currency: string
   recordedAt: number | Date
@@ -132,6 +134,8 @@ export interface PortfolioTopCard {
   priceInBrl: number
   priceInUsd: number
   provider: string
+  condition?: string | null
+  conditionDerivation?: 'exact' | 'nearest' | 'fallback' | null
 }
 
 export interface PortfolioRegionalBreakdown {

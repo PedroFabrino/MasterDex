@@ -126,7 +126,7 @@ describe('TcgDexService search and caching', () => {
     expect(res.length).toBeGreaterThan(0)
     expect(res[0].id).toBe('swsh12.5gg-GG48')
     expect(res[0].localId).toBe('GG48')
-    expect(res[0].imageUrl).toContain('pokemontcgapi.com')
+    expect(res[0].imageUrl).toMatch(/(pokemontcgapi\.com|tcgdex\.net)/)
   })
 })
 

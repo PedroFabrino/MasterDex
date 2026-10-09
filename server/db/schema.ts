@@ -24,6 +24,7 @@ export const userPokemon = sqliteTable('user_pokemon', {
   cardName: text('card_name'),
   cardImageUrl: text('card_image_url'),
   cardLanguage: text('card_language').default('en'),
+  cardCondition: text('card_condition').notNull().default('NM'),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 })
 
@@ -77,6 +78,7 @@ export const cardPrices = sqliteTable('card_prices', {
   id: text('id').primaryKey(),
   cardId: text('card_id').notNull(),
   provider: text('provider').notNull(),
+  condition: text('condition').notNull().default('NM'),
   nativePrice: real('native_price').notNull(),
   currency: text('currency').notNull(),
   recordedAt: integer('recorded_at', { mode: 'timestamp' }).notNull(),

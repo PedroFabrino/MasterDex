@@ -8,6 +8,7 @@ import { collectorRepository } from '../repositories/collectorRepository.js'
 import { tcgdexPricingService } from './tcgdexPricingService.js'
 import { exchangeRateService } from './exchangeRateService.js'
 import { canonicalPriceService } from './canonicalPriceService.js'
+import { normalizeCardCondition } from '../../shared/conditionConfig.js'
 
 export const REGIONS_BY_GEN: Record<number, string> = {
   1: 'Kanto',
@@ -87,6 +88,8 @@ export class PortfolioService {
       priceInBrl: number
       priceInUsd: number
       provider: string
+      condition?: string
+      conditionDerivation?: 'exact' | 'nearest' | 'fallback' | null
       generation: number
       regionName: string
     }> = []
@@ -95,14 +98,14 @@ export class PortfolioService {
     for (let g = 1; g <= 9; g++) {
       genBuckets.set(g, { count: 0, totalBrl: 0 })
     }
-
     for (const item of assignedCards) {
       if (!item.cardId) continue
 
       const quotes = pricesMap.get(item.cardId) || []
-      const canonical = canonicalPriceService.resolveFromQuotes(quotes, pref, 0, rates)
-      const ligaCanonical = canonicalPriceService.resolveFromQuotes(quotes, 'ligapokemon', 0, rates)
-      const tcgCanonical = canonicalPriceService.resolveFromQuotes(quotes, 'tcgplayer', 0, rates)
+      const cardCond = normalizeCardCondition(item.cardCondition)
+      const canonical = canonicalPriceService.resolveFromQuotes(quotes, pref, 0, rates, cardCond)
+      const ligaCanonical = canonicalPriceService.resolveFromQuotes(quotes, 'ligapokemon', 0, rates, cardCond)
+      const tcgCanonical = canonicalPriceService.resolveFromQuotes(quotes, 'tcgplayer', 0, rates, cardCond)
 
       const priceInBrl = canonical.priceInBrl
       const priceInUsd = Math.round((priceInBrl / usdRate) * 100) / 100
@@ -126,6 +129,8 @@ export class PortfolioService {
         priceInBrl,
         priceInUsd,
         provider: canonical.provider,
+        condition: cardCond,
+        conditionDerivation: canonical.conditionDerivation,
         generation,
         regionName,
       })
@@ -147,6 +152,8 @@ export class PortfolioService {
         priceInBrl: c.priceInBrl,
         priceInUsd: c.priceInUsd,
         provider: c.provider,
+        condition: c.condition,
+        conditionDerivation: c.conditionDerivation,
       }))
 
     // Regional distribution (Gen 1-9)

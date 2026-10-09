@@ -257,6 +257,13 @@ export class ExpansionsRepository {
     return Array.from(map.values())
   }
 
+  async getCardById(cardId: string): Promise<CardRecord | undefined> {
+    const rows = await db.select().from(cards).where(eq(cards.id, cardId)).limit(1)
+    if (rows.length > 0) return rows[0]
+    const { all } = loadBaselineCards()
+    return all.find((c) => c.id === cardId)
+  }
+
   async getCardsByIds(cardIds: string[]): Promise<CardRecord[]> {
     if (cardIds.length === 0) return []
     return await db.select().from(cards).where(inArray(cards.id, cardIds))

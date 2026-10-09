@@ -137,6 +137,10 @@ _Avoid_: Forex service, currency crawler, rate scraper
 A chronological series of recorded market prices for a card used to analyze investment value appreciation or decline over time.
 _Avoid_: Price log, trend history
 
+**Condition Valuation Adjustment**:
+The valuation resolution applied to a non-NM card, calculated either from direct marketplace condition quotations (LigaPokémon condition stock) or via calibrated condition discount multipliers when live quotations are absent.
+_Avoid_: State discount, damage penalty, condition drop
+
 ### User & Collection
 
 **Collector Profile**:
@@ -164,6 +168,10 @@ _Avoid_: Grid box, dex cell, card container
 **Assigned Card Artwork**:
 A specific physical Pokémon TCG card (featuring artwork scan, set name, and collector number) designated to visually represent an owned card in a Binder Slot.
 _Avoid_: Custom skin, card overlay, replaced sprite
+
+**Card Condition**:
+The physical grade or preservation state of an owned Pokémon TCG card assigned to a Binder Slot, evaluated on a 5-tier standard (Near Mint, Lightly Played / SP, Moderately Played, Heavily Played, Damaged / D).
+_Avoid_: Card state, card quality, wear tier, grade status
 
 **Default Sprite Anchor**:
 The persistent first position in the card artwork selector displaying the official game sprite, functioning as the default selection and the reset mechanism.

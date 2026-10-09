@@ -11,7 +11,7 @@ export class TcgdexPricingService {
   } | null> {
     try {
       const res = await fetch(`https://api.tcgdex.net/v2/en/cards/${encodeURIComponent(cardId)}`, {
-        signal: AbortSignal.timeout(4000),
+        signal: AbortSignal.timeout(8000),
       })
       if (!res.ok) return null
       const data = (await res.json()) as any

@@ -6,6 +6,7 @@ import {
   type CollectorProfileRecord,
   type UserPokemonRecord,
 } from '../db/schema.js'
+import { collectorPreferencesRepository } from './collectorPreferencesRepository.js'
 
 export class CollectorRepository {
   async pingDatabase(timeoutMs = 3000): Promise<boolean> {
@@ -98,6 +99,7 @@ export class CollectorRepository {
         cardName: userPokemon.cardName,
         cardImageUrl: userPokemon.cardImageUrl,
         cardLanguage: userPokemon.cardLanguage,
+        cardCondition: userPokemon.cardCondition,
       })
       .from(userPokemon)
       .where(
@@ -120,6 +122,7 @@ export class CollectorRepository {
           cardName?: string | null
           cardImageUrl?: string | null
           cardLanguage?: string | null
+          cardCondition?: string | null
         }
   ): Promise<UserPokemonRecord> {
     const existing = await db
@@ -138,6 +141,7 @@ export class CollectorRepository {
       const nextCardName = opts.cardName !== undefined ? opts.cardName : record.cardName
       const nextCardImageUrl = opts.cardImageUrl !== undefined ? opts.cardImageUrl : record.cardImageUrl
       const nextCardLanguage = opts.cardLanguage !== undefined ? opts.cardLanguage : (record.cardLanguage ?? 'en')
+      const nextCardCondition = (opts.cardCondition ? opts.cardCondition : record.cardCondition) ?? 'NM'
 
       await db
         .update(userPokemon)
@@ -147,6 +151,7 @@ export class CollectorRepository {
           cardName: nextCardName,
           cardImageUrl: nextCardImageUrl,
           cardLanguage: nextCardLanguage,
+          cardCondition: nextCardCondition,
           updatedAt: now,
         })
         .where(eq(userPokemon.id, record.id))
@@ -158,6 +163,7 @@ export class CollectorRepository {
         cardName: nextCardName,
         cardImageUrl: nextCardImageUrl,
         cardLanguage: nextCardLanguage,
+        cardCondition: nextCardCondition,
         updatedAt: now,
       }
     }
@@ -171,6 +177,7 @@ export class CollectorRepository {
       cardName: opts.cardName ?? null,
       cardImageUrl: opts.cardImageUrl ?? null,
       cardLanguage: opts.cardLanguage ?? 'en',
+      cardCondition: opts.cardCondition ?? 'NM',
       updatedAt: now,
     }
     await db.insert(userPokemon).values(newRecord)
@@ -186,6 +193,7 @@ export class CollectorRepository {
       cardName?: string | null
       cardImageUrl?: string | null
       cardLanguage?: string | null
+      cardCondition?: string | null
     }>
   ): Promise<void> {
     const existing = await this.getUserCollection(userId)
@@ -206,6 +214,7 @@ export class CollectorRepository {
             cardName: entry.cardName !== undefined ? entry.cardName : match.cardName,
             cardImageUrl: entry.cardImageUrl !== undefined ? entry.cardImageUrl : match.cardImageUrl,
             cardLanguage: entry.cardLanguage !== undefined ? entry.cardLanguage : (match.cardLanguage ?? 'en'),
+            cardCondition: entry.cardCondition !== undefined ? entry.cardCondition : (match.cardCondition ?? 'NM'),
             updatedAt: now,
           },
         })
@@ -219,6 +228,7 @@ export class CollectorRepository {
           cardName: entry.cardName ?? null,
           cardImageUrl: entry.cardImageUrl ?? null,
           cardLanguage: entry.cardLanguage ?? 'en',
+          cardCondition: entry.cardCondition ?? 'NM',
           updatedAt: now,
         })
       }
@@ -242,27 +252,8 @@ export class CollectorRepository {
       .where(eq(collectorProfiles.id, userId))
   }
 
-  async getPreferences(userId: string): Promise<{
-    targetRarity: string
-    hiddenExpansions: string[]
-    valuationPreference: 'ligapokemon' | 'tcgplayer'
-  }> {
-    const profile = await this.getProfileById(userId)
-    if (!profile) {
-      return { targetRarity: 'any', hiddenExpansions: [], valuationPreference: 'ligapokemon' }
-    }
-    let hiddenExpansions: string[] = []
-    try {
-      hiddenExpansions = JSON.parse(profile.hiddenExpansions || '[]')
-    } catch {
-      hiddenExpansions = []
-    }
-    return {
-      targetRarity: profile.targetRarity || 'any',
-      hiddenExpansions,
-      valuationPreference:
-        (profile.valuationPreference as 'ligapokemon' | 'tcgplayer') || 'ligapokemon',
-    }
+  async getPreferences(userId: string) {
+    return await collectorPreferencesRepository.getPreferences(userId)
   }
 
   async updatePreferences(
@@ -272,109 +263,22 @@ export class CollectorRepository {
       hiddenExpansions?: string[]
       valuationPreference?: 'ligapokemon' | 'tcgplayer'
     }
-  ): Promise<{
-    targetRarity: string
-    hiddenExpansions: string[]
-    valuationPreference: 'ligapokemon' | 'tcgplayer'
-  }> {
-    const profile = await this.getProfileById(userId)
-    if (!profile) {
-      await this.upsertProfile({
-        id: userId,
-        email: `${userId}@local.dev`,
-        name: userId,
-      })
-    }
-
-    const payload: {
-      targetRarity?: string
-      hiddenExpansions?: string
-      valuationPreference?: string
-    } = {}
-    if (updates.targetRarity !== undefined) {
-      payload.targetRarity = updates.targetRarity
-    }
-    if (updates.hiddenExpansions !== undefined) {
-      payload.hiddenExpansions = JSON.stringify(updates.hiddenExpansions)
-    }
-    if (updates.valuationPreference !== undefined) {
-      payload.valuationPreference = updates.valuationPreference
-    }
-
-    if (Object.keys(payload).length > 0) {
-      await db.update(collectorProfiles).set(payload).where(eq(collectorProfiles.id, userId))
-    }
-
-    return await this.getPreferences(userId)
+  ) {
+    return await collectorPreferencesRepository.updatePreferences(userId, updates)
   }
 
-  async getSettings(userId: string): Promise<CollectorSettings> {
-    const profile = await this.getProfileById(userId)
-    if (!profile) {
-      return {
-        geminiApiKey: null,
-        maskedGeminiApiKey: null,
-        hasGeminiApiKey: false,
-        favoredLanguages: ['pt', 'en', 'ja'],
-      }
-    }
-    let favoredLanguages: string[] = ['pt', 'en', 'ja']
-    try {
-      if (profile.favoredLanguages) {
-        favoredLanguages = JSON.parse(profile.favoredLanguages)
-      }
-    } catch {
-      favoredLanguages = ['pt', 'en', 'ja']
-    }
-    return {
-      geminiApiKey: profile.geminiApiKey || null,
-      maskedGeminiApiKey: maskApiKey(profile.geminiApiKey),
-      hasGeminiApiKey: Boolean(profile.geminiApiKey),
-      favoredLanguages,
-    }
+  async getSettings(userId: string) {
+    return await collectorPreferencesRepository.getSettings(userId)
   }
 
   async updateSettings(
     userId: string,
     updates: { geminiApiKey?: string | null; favoredLanguages?: string[] }
-  ): Promise<CollectorSettings> {
-    const profile = await this.getProfileById(userId)
-    if (!profile) {
-      await this.upsertProfile({
-        id: userId,
-        email: `${userId}@local.dev`,
-        name: userId,
-      })
-    }
-
-    const payload: { geminiApiKey?: string | null; favoredLanguages?: string } = {}
-    if (updates.geminiApiKey !== undefined) {
-      payload.geminiApiKey = updates.geminiApiKey ? updates.geminiApiKey.trim() : null
-    }
-    if (updates.favoredLanguages !== undefined) {
-      payload.favoredLanguages = JSON.stringify(updates.favoredLanguages)
-    }
-
-    if (Object.keys(payload).length > 0) {
-      await db.update(collectorProfiles).set(payload).where(eq(collectorProfiles.id, userId))
-    }
-
-    return await this.getSettings(userId)
+  ) {
+    return await collectorPreferencesRepository.updateSettings(userId, updates)
   }
 }
 
-export function maskApiKey(key: string | null | undefined): string | null {
-  if (!key) return null
-  if (key.length <= 8) return '****'
-  return `${key.slice(0, 6)}...${key.slice(-4)}`
-}
-
-export interface CollectorSettings {
-  geminiApiKey: string | null
-  maskedGeminiApiKey: string | null
-  hasGeminiApiKey: boolean
-  favoredLanguages: string[]
-}
-
+export { maskApiKey, type CollectorSettings } from './collectorPreferencesRepository.js'
 export const collectorRepository = new CollectorRepository()
 

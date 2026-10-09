@@ -10,6 +10,7 @@ import {
 export interface UpsertPriceInput {
   cardId: string
   provider: 'tcgdex_tcgplayer' | 'tcgdex_cardmarket' | 'tcgcsv' | 'ligapokemon' | string
+  condition?: string
   nativePrice: number
   currency: 'USD' | 'EUR' | 'BRL' | string
   recordedAt?: Date
@@ -18,12 +19,19 @@ export interface UpsertPriceInput {
 export class PricingRepository {
   async upsertPrice(input: UpsertPriceInput): Promise<void> {
     const recordedAt = input.recordedAt || new Date()
-    const id = `${input.cardId}:${input.provider}`
+    const condition = input.condition || 'NM'
+    const id = `${input.cardId}:${input.provider}:${condition}`
 
     const existing = await db
       .select()
       .from(cardPrices)
-      .where(and(eq(cardPrices.cardId, input.cardId), eq(cardPrices.provider, input.provider)))
+      .where(
+        and(
+          eq(cardPrices.cardId, input.cardId),
+          eq(cardPrices.provider, input.provider),
+          eq(cardPrices.condition, condition)
+        )
+      )
       .limit(1)
 
     if (existing.length > 0) {
@@ -32,6 +40,7 @@ export class PricingRepository {
         .set({
           nativePrice: input.nativePrice,
           currency: input.currency,
+          condition,
           recordedAt,
         })
         .where(eq(cardPrices.id, existing[0].id))
@@ -40,6 +49,7 @@ export class PricingRepository {
         id,
         cardId: input.cardId,
         provider: input.provider,
+        condition,
         nativePrice: input.nativePrice,
         currency: input.currency,
         recordedAt,
@@ -55,6 +65,13 @@ export class PricingRepository {
 
   async getPricesByCardId(cardId: string): Promise<CardPriceRecord[]> {
     return await db.select().from(cardPrices).where(eq(cardPrices.cardId, cardId))
+  }
+
+  async getPricesByCardIdAndCondition(cardId: string, condition = 'NM'): Promise<CardPriceRecord[]> {
+    return await db
+      .select()
+      .from(cardPrices)
+      .where(and(eq(cardPrices.cardId, cardId), eq(cardPrices.condition, condition)))
   }
 
   async getPricesByCardIds(cardIds: string[]): Promise<Map<string, CardPriceRecord[]>> {

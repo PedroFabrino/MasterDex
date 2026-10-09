@@ -65,6 +65,7 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
       card_name TEXT,
       card_image_url TEXT,
       card_language TEXT DEFAULT 'en',
+      card_condition TEXT NOT NULL DEFAULT 'NM',
       updated_at INTEGER NOT NULL
     );
   `)
@@ -128,6 +129,7 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
       id TEXT PRIMARY KEY,
       card_id TEXT NOT NULL,
       provider TEXT NOT NULL,
+      condition TEXT NOT NULL DEFAULT 'NM',
       native_price REAL NOT NULL,
       currency TEXT NOT NULL,
       recorded_at INTEGER NOT NULL
@@ -136,6 +138,10 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
 
   await client.execute(`
     CREATE INDEX IF NOT EXISTS idx_card_prices_card_provider ON card_prices (card_id, provider);
+  `)
+
+  await client.execute(`
+    CREATE INDEX IF NOT EXISTS idx_card_prices_card_provider_cond ON card_prices (card_id, provider, condition);
   `)
 
   await client.execute(`
@@ -161,12 +167,24 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
     }
   }
 
-  for (const col of ['card_id TEXT', 'card_name TEXT', 'card_image_url TEXT', "card_language TEXT DEFAULT 'en'"]) {
+  for (const col of [
+    'card_id TEXT',
+    'card_name TEXT',
+    'card_image_url TEXT',
+    "card_language TEXT DEFAULT 'en'",
+    "card_condition TEXT NOT NULL DEFAULT 'NM'",
+  ]) {
     try {
       await client.execute(`ALTER TABLE user_pokemon ADD COLUMN ${col};`)
     } catch {
       // Column already exists, safe to ignore
     }
+  }
+
+  try {
+    await client.execute(`ALTER TABLE card_prices ADD COLUMN condition TEXT NOT NULL DEFAULT 'NM';`)
+  } catch {
+    // Column already exists, safe to ignore
   }
 
   for (const col of ['logo_url TEXT', 'symbol_url TEXT', 'ligapokemon_code TEXT']) {
