@@ -267,6 +267,7 @@ export interface TranslationDictionary {
     layout2x2: string
     layout3x3: string
     layout4x3: string
+    layout4x4: string
     cameraPermissionPrompt: string
     cameraNotAvailable: string
     startCamera: string

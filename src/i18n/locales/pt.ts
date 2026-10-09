@@ -258,6 +258,7 @@ export const pt: TranslationDictionary = {
     layout2x2: '2x2 (4 Bolsos)',
     layout3x3: '3x3 (9 Bolsos)',
     layout4x3: '4x3 (12 Bolsos)',
+    layout4x4: '4x4 (16 Bolsos)',
     cameraPermissionPrompt: 'O acesso à câmera é necessário para o visor ao vivo.',
     cameraNotAvailable: 'Câmera indisponível neste dispositivo ou permissão negada.',
     startCamera: 'Iniciar Câmera',

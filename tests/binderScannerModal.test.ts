@@ -13,10 +13,11 @@ vi.mock("../src/components/ui/dialog.js", () => ({
 
 import { BinderScannerModal } from "../src/components/scanner/BinderScannerModal.js"
 import { ScannerCameraSelector } from "../src/components/scanner/ScannerCameraSelector.js"
+import { ScannerGridOverlay } from "../src/components/scanner/ScannerGridOverlay.js"
 import { I18nProvider } from "../src/i18n/I18nContext.js"
 
 describe("BinderScannerModal Component (Ticket #30 / Spec #27)", () => {
-  it("renders modal with layout selectors, camera dropdown, and camera controls when open", () => {
+  it("renders modal with layout selectors including 4x4, camera dropdown, and camera controls when open", () => {
     const onProceed = vi.fn()
     const onClose = vi.fn()
 
@@ -37,6 +38,7 @@ describe("BinderScannerModal Component (Ticket #30 / Spec #27)", () => {
     expect(html).toContain("3x3")
     expect(html).toContain("2x2")
     expect(html).toContain("4x3")
+    expect(html).toContain("4x4")
 
     // Camera selector dropdown container
     expect(html).toContain('data-testid="camera-selector"')
@@ -62,6 +64,33 @@ describe("BinderScannerModal Component (Ticket #30 / Spec #27)", () => {
     )
 
     expect(html).not.toContain("Scanner Visual de Fichário")
+  })
+})
+
+describe("ScannerGridOverlay Formations", () => {
+  it("renders 16 pockets for 4x4 layout", () => {
+    const html = renderToStaticMarkup(React.createElement(ScannerGridOverlay, { layout: "4x4" }))
+    expect(html).toContain("#1")
+    expect(html).toContain("#16")
+    expect(html).toContain("repeat(4, minmax(0, 1fr))")
+  })
+
+  it("renders 12 pockets for 4x3 layout", () => {
+    const html = renderToStaticMarkup(React.createElement(ScannerGridOverlay, { layout: "4x3" }))
+    expect(html).toContain("#12")
+    expect(html).not.toContain("#13")
+  })
+
+  it("renders 9 pockets for 3x3 layout", () => {
+    const html = renderToStaticMarkup(React.createElement(ScannerGridOverlay, { layout: "3x3" }))
+    expect(html).toContain("#9")
+    expect(html).not.toContain("#10")
+  })
+
+  it("renders 4 pockets for 2x2 layout", () => {
+    const html = renderToStaticMarkup(React.createElement(ScannerGridOverlay, { layout: "2x2" }))
+    expect(html).toContain("#4")
+    expect(html).not.toContain("#5")
   })
 })
 
@@ -110,13 +139,22 @@ describe("ScannerCameraSelector Component (Multi-Camera & Phone Virtual Webcam)"
     const modalPath = new URL("../src/components/scanner/BinderScannerModal.tsx", import.meta.url)
     const hookPath = new URL("../src/components/scanner/useBinderScannerCamera.ts", import.meta.url)
     const selectorPath = new URL("../src/components/scanner/ScannerCameraSelector.tsx", import.meta.url)
+    const overlayPath = new URL("../src/components/scanner/ScannerGridOverlay.tsx", import.meta.url)
+    const stagingPath = new URL("../src/components/scanner/StagingReviewModal.tsx", import.meta.url)
+    const testPath = new URL("./binderScannerModal.test.ts", import.meta.url)
 
     const modalLines = fs.readFileSync(modalPath, "utf-8").split("\n").length
     const hookLines = fs.readFileSync(hookPath, "utf-8").split("\n").length
     const selectorLines = fs.readFileSync(selectorPath, "utf-8").split("\n").length
+    const overlayLines = fs.readFileSync(overlayPath, "utf-8").split("\n").length
+    const stagingLines = fs.readFileSync(stagingPath, "utf-8").split("\n").length
+    const testLines = fs.readFileSync(testPath, "utf-8").split("\n").length
 
     expect(modalLines).toBeLessThanOrEqual(400)
     expect(hookLines).toBeLessThanOrEqual(300)
     expect(selectorLines).toBeLessThanOrEqual(400)
+    expect(overlayLines).toBeLessThanOrEqual(400)
+    expect(stagingLines).toBeLessThanOrEqual(400)
+    expect(testLines).toBeLessThanOrEqual(500)
   })
 })

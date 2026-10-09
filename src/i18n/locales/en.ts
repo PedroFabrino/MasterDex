@@ -258,6 +258,7 @@ export const en: TranslationDictionary = {
     layout2x2: '2x2 (4 Pockets)',
     layout3x3: '3x3 (9 Pockets)',
     layout4x3: '4x3 (12 Pockets)',
+    layout4x4: '4x4 (16 Pockets)',
     cameraPermissionPrompt: 'Camera access is required to use the live viewfinder.',
     cameraNotAvailable: 'Camera unavailable on this device or permission denied.',
     startCamera: 'Start Camera',

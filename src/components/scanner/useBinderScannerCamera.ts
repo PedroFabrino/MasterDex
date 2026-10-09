@@ -6,7 +6,7 @@ import type { VideoDeviceOption } from "./ScannerCameraSelector"
 interface UseBinderScannerCameraProps {
   open: boolean
   autoSnap: boolean
-  layout: "2x2" | "3x3" | "4x3"
+  layout: "2x2" | "3x3" | "4x3" | "4x4"
   onCapture: (page: CapturedBinderPage) => void
 }
 

@@ -76,7 +76,14 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
         } catch (err) {
           console.error("Scan page error:", err)
           // Default empty slots on error
-          const total = page.layout === "2x2" ? 4 : page.layout === "4x3" ? 12 : 9
+          const total =
+            page.layout === "2x2"
+              ? 4
+              : page.layout === "4x3"
+                ? 12
+                : page.layout === "4x4"
+                  ? 16
+                  : 9
           results[page.id] = Array.from({ length: total }).map((_, i) => ({
             slotIndex: i,
             pokedexId: null,
@@ -253,9 +260,11 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
               className={`grid gap-2.5 p-2 bg-zinc-900/60 rounded-xl border border-zinc-800 max-h-[55vh] overflow-y-auto ${
                 currentPage?.layout === "2x2"
                   ? "grid-cols-2"
-                  : currentPage?.layout === "4x3"
-                  ? "grid-cols-3 sm:grid-cols-4"
-                  : "grid-cols-3"
+                  : currentPage?.layout === "4x4"
+                    ? "grid-cols-2 sm:grid-cols-4"
+                    : currentPage?.layout === "4x3"
+                      ? "grid-cols-3 sm:grid-cols-4"
+                      : "grid-cols-3"
               }`}
             >
               {currentSlots.map((slot) => (

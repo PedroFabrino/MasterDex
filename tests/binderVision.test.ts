@@ -115,6 +115,22 @@ describe('Backend Binder Vision API & Grid Recognition (Ticket #29 / Spec #27)',
       expect(res.slots[0].pokedexId).toBe(25)
       expect(res.detectedCardsCount).toBe(1)
     })
+
+    it('processes 4x4 layout with 16 total pockets', async () => {
+      const output = JSON.stringify({
+        slots: [
+          { slotIndex: 0, pokemonName: 'Mew', empty: false },
+          { slotIndex: 15, pokemonName: 'Mewtwo', empty: false },
+        ],
+      })
+      const res = await binderVisionService.processVisionSlots(output, '4x4', 16)
+      expect(res.layout).toBe('4x4')
+      expect(res.totalSlots).toBe(16)
+      expect(res.slots.length).toBe(16)
+      expect(res.slots[0].pokemonName).toBe('Mew')
+      expect(res.slots[15].pokemonName).toBe('Mewtwo')
+      expect(res.slots[7].empty).toBe(true)
+    })
   })
 
   describe('POST /api/binder/scan-page route', () => {

@@ -25,7 +25,7 @@ import { useBinderScannerCamera } from "./useBinderScannerCamera"
 export interface CapturedBinderPage {
   id: string
   image: string
-  layout: "2x2" | "3x3" | "4x3"
+  layout: "2x2" | "3x3" | "4x3" | "4x4"
 }
 
 interface BinderScannerModalProps {
@@ -34,7 +34,7 @@ interface BinderScannerModalProps {
   onProceedToReview: (pages: CapturedBinderPage[]) => void
 }
 
-type GridLayout = "2x2" | "3x3" | "4x3"
+type GridLayout = "2x2" | "3x3" | "4x3" | "4x4"
 
 export const BinderScannerModal: React.FC<BinderScannerModalProps> = ({
   open,
@@ -169,7 +169,7 @@ export const BinderScannerModal: React.FC<BinderScannerModalProps> = ({
                 <span className="text-[10px] uppercase font-semibold text-zinc-500 px-1.5 hidden sm:inline">
                   {t("scanner.layoutSelectorLabel")}:
                 </span>
-                {(["2x2", "3x3", "4x3"] as const).map((l) => (
+                {(["2x2", "3x3", "4x3", "4x4"] as const).map((l) => (
                   <button
                     key={l}
                     onClick={() => setLayout(l)}
