@@ -211,7 +211,16 @@ Respond ONLY with valid JSON adhering strictly to this schema:
         const msg = errJson?.error?.message || `Google Gemini API returned HTTP ${res.status}`
         lastError = new Error(`Gemini Vision error: ${msg}`)
 
-        if (res.status === 404 || msg.includes('not found') || msg.includes('not supported')) {
+        if (
+          res.status === 404 ||
+          res.status === 429 ||
+          res.status === 503 ||
+          msg.includes('not found') ||
+          msg.includes('not supported') ||
+          msg.includes('high demand') ||
+          msg.includes('overloaded') ||
+          msg.includes('exhausted')
+        ) {
           continue
         }
 
