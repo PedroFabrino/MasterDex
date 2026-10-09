@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { collectorRepository } from '../repositories/collectorRepository.js'
 import { sheetSeedService } from '../services/sheetSeedService.js'
 import { verifySessionToken } from '../services/authService.js'
+import { tcgdexPricingService } from '../services/tcgdexPricingService.js'
 
 export const collectionRoutes = new Hono()
 
@@ -145,6 +146,10 @@ collectionRoutes.patch('/:pokemonId', async (c) => {
       }
     )
 
+    if (parsed.data.cardId) {
+      await tcgdexPricingService.ensureCardsPricing([parsed.data.cardId]).catch(() => {})
+    }
+
     return c.json({ item: updated })
   } catch (error: any) {
     return c.json({ error: error?.message || 'Failed to update collection' }, 500)
@@ -261,6 +266,11 @@ collectionRoutes.post('/batch', async (c) => {
     }
 
     await collectorRepository.batchUpsertUserPokemon(parsed.data.userId, entries)
+
+    const cardIdsToPrice = entries.map((e) => e.cardId).filter(Boolean) as string[]
+    if (cardIdsToPrice.length > 0) {
+      tcgdexPricingService.ensureCardsPricing(cardIdsToPrice).catch(() => {})
+    }
 
     const collectedCount = entries.filter((e) => e.collected).length
     return c.json({

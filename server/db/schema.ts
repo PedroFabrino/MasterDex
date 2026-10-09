@@ -75,7 +75,7 @@ export const trackedExpansions = sqliteTable('tracked_expansions', {
 
 export const cardPrices = sqliteTable('card_prices', {
   id: text('id').primaryKey(),
-  cardId: text('card_id').notNull().references(() => cards.id, { onDelete: 'cascade' }),
+  cardId: text('card_id').notNull(),
   provider: text('provider').notNull(),
   nativePrice: real('native_price').notNull(),
   currency: text('currency').notNull(),

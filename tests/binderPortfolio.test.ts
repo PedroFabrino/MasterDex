@@ -158,6 +158,30 @@ describe('Binder Portfolio Valuation & Analytics (Ticket #45)', () => {
       expect(summary.totalUsd).toBeCloseTo(95.0, 0)
       expect(summary.topCards[0].provider).toBe('tcgdex_tcgplayer')
     })
+
+    it('automatically ensures pricing on-demand for unindexed cards', async () => {
+      const autoPriceUserId = 'test-portfolio-auto-price-user'
+      await collectorRepository.upsertProfile({
+        id: autoPriceUserId,
+        email: 'autoprice@example.com',
+        name: 'Auto Price User',
+      })
+
+      // Assign a card that is NOT pre-populated in card_prices (e.g. sv03-208 Pidgeotto IR)
+      await collectorRepository.setUserPokemon(autoPriceUserId, 17, {
+        collected: true,
+        cardId: 'sv03-208',
+        cardName: 'Pidgeotto IR',
+        cardImageUrl: 'https://assets.tcgdex.net/en/sv/sv03/208/high.webp',
+      })
+
+      const summary = await portfolioService.getPortfolioSummary(autoPriceUserId)
+      expect(summary.cardCount).toBe(1)
+      expect(summary.totalBrl).toBeGreaterThan(0)
+      expect(summary.totalUsd).toBeGreaterThan(0)
+      expect(summary.topCards[0].cardId).toBe('sv03-208')
+      expect(summary.topCards[0].priceInBrl).toBeGreaterThan(0)
+    })
   })
 
   describe('API: GET /api/collector/portfolio', () => {

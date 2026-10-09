@@ -5,7 +5,7 @@ import type {
   ValuationPreference,
 } from '../../shared/types.js'
 import { collectorRepository } from '../repositories/collectorRepository.js'
-import { pricingRepository } from '../repositories/pricingRepository.js'
+import { tcgdexPricingService } from './tcgdexPricingService.js'
 import { exchangeRateService } from './exchangeRateService.js'
 import { canonicalPriceService } from './canonicalPriceService.js'
 
@@ -70,7 +70,7 @@ export class PortfolioService {
 
     const cardIds = assignedCards.map((c) => c.cardId).filter(Boolean) as string[]
     const [pricesMap, rates] = await Promise.all([
-      pricingRepository.getPricesByCardIds(cardIds),
+      tcgdexPricingService.ensureCardsPricing(cardIds),
       exchangeRateService.getAllRates(),
     ])
 

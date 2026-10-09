@@ -126,7 +126,7 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
   await client.execute(`
     CREATE TABLE IF NOT EXISTS card_prices (
       id TEXT PRIMARY KEY,
-      card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+      card_id TEXT NOT NULL,
       provider TEXT NOT NULL,
       native_price REAL NOT NULL,
       currency TEXT NOT NULL,
@@ -204,5 +204,27 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
     `)
   } catch {
     // Ignore migration error if expansions table does not exist yet
+  }
+
+  try {
+    const fks = await client.execute('PRAGMA foreign_key_list(card_prices);')
+    if (fks.rows.some((row: any) => row.table === 'cards')) {
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS card_prices_clean (
+          id TEXT PRIMARY KEY,
+          card_id TEXT NOT NULL,
+          provider TEXT NOT NULL,
+          native_price REAL NOT NULL,
+          currency TEXT NOT NULL,
+          recorded_at INTEGER NOT NULL
+        );
+      `)
+      await client.execute(`INSERT OR IGNORE INTO card_prices_clean SELECT * FROM card_prices;`)
+      await client.execute(`DROP TABLE card_prices;`)
+      await client.execute(`ALTER TABLE card_prices_clean RENAME TO card_prices;`)
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_card_prices_card_provider ON card_prices (card_id, provider);`)
+    }
+  } catch {
+    // Ignore migration error if table does not exist yet
   }
 }

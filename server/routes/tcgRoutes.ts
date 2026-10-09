@@ -52,10 +52,11 @@ tcgRoutes.get('/cards/search', async (c) => {
 tcgRoutes.get('/cards/:id/prices', async (c) => {
   const cardId = c.req.param('id')
   try {
-    const [prices, rates] = await Promise.all([
-      pricingRepository.getPricesByCardId(cardId),
+    const [pricesMap, rates] = await Promise.all([
+      tcgdexPricingService.ensureCardsPricing([cardId]),
       exchangeRateService.getAllRates(),
     ])
+    const prices = pricesMap.get(cardId) || []
     return c.json({
       cardId,
       prices,

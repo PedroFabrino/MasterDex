@@ -2,7 +2,7 @@ import { pricingRepository } from '../repositories/pricingRepository.js'
 import { expansionsRepository } from '../repositories/expansionsRepository.js'
 import { exchangeRateService } from '../services/exchangeRateService.js'
 import { investmentService } from '../services/investmentService.js'
-import type { CardRecord } from '../db/schema.js'
+import type { CardRecord, CardPriceRecord } from '../db/schema.js'
 
 export class TcgdexPricingService {
   async fetchCardPricing(cardId: string): Promise<{
@@ -42,6 +42,58 @@ export class TcgdexPricingService {
       console.warn(`[tcgdexPricingService] Failed to fetch pricing for ${cardId}:`, err?.message)
       return null
     }
+  }
+
+  async ensureCardsPricing(cardIds: string[]): Promise<Map<string, CardPriceRecord[]>> {
+    const uniqueIds = Array.from(new Set(cardIds.filter(Boolean)))
+    if (uniqueIds.length === 0) return new Map()
+
+    const existingMap = await pricingRepository.getPricesByCardIds(uniqueIds)
+    const now = Date.now()
+    const SEVEN_DAYS_MS = 1000 * 60 * 60 * 24 * 7
+
+    const missingIds = uniqueIds.filter((id) => {
+      const prices = existingMap.get(id)
+      if (!prices || prices.length === 0) return true
+      const oldest = Math.min(...prices.map((p) => p.recordedAt.getTime()))
+      return now - oldest > SEVEN_DAYS_MS
+    })
+
+    if (missingIds.length === 0) return existingMap
+
+    const chunkSize = 8
+    for (let i = 0; i < missingIds.length; i += chunkSize) {
+      const chunk = missingIds.slice(i, i + chunkSize)
+      await Promise.all(
+        chunk.map(async (cardId) => {
+          try {
+            const quotes = await this.fetchCardPricing(cardId)
+            if (!quotes) return
+
+            if (quotes.tcgplayer) {
+              await pricingRepository.upsertPrice({
+                cardId,
+                provider: 'tcgdex_tcgplayer',
+                nativePrice: quotes.tcgplayer.nativePrice,
+                currency: quotes.tcgplayer.currency,
+              })
+            }
+            if (quotes.cardmarket) {
+              await pricingRepository.upsertPrice({
+                cardId,
+                provider: 'tcgdex_cardmarket',
+                nativePrice: quotes.cardmarket.nativePrice,
+                currency: quotes.cardmarket.currency,
+              })
+            }
+          } catch (e: any) {
+            console.warn(`[tcgdexPricingService] Error fetching price for ${cardId}:`, e?.message)
+          }
+        })
+      )
+    }
+
+    return await pricingRepository.getPricesByCardIds(uniqueIds)
   }
 
   async syncExpansionPrices(expansionId: string): Promise<{
