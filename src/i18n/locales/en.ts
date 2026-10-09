@@ -276,6 +276,9 @@ export const en: TranslationDictionary = {
     clearQueue: 'Clear All',
     reviewPagesAction: 'Review {count} Pages',
     alignGuideHint: 'Align binder edges inside the dashed grid lines',
+    cameraSelectorLabel: 'Camera',
+    selectCameraPlaceholder: 'Select Camera',
+    defaultCamera: 'Default Camera',
   },
   staging: {
     title: 'Staging & Review Grid',

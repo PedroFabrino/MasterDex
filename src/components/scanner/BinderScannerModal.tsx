@@ -19,6 +19,7 @@ import {
 import { useTranslation } from "@/i18n"
 import { ScannerGridOverlay } from "./ScannerGridOverlay"
 import { ScannerQueueStrip } from "./ScannerQueueStrip"
+import { ScannerCameraSelector } from "./ScannerCameraSelector"
 import { useBinderScannerCamera } from "./useBinderScannerCamera"
 
 export interface CapturedBinderPage {
@@ -58,8 +59,11 @@ export const BinderScannerModal: React.FC<BinderScannerModalProps> = ({
     isCameraActive,
     cameraError,
     flashActive,
+    videoDevices,
+    selectedDeviceId,
     startCamera,
     captureFrame,
+    switchCamera,
   } = useBinderScannerCamera({
     open,
     autoSnap,
@@ -153,24 +157,32 @@ export const BinderScannerModal: React.FC<BinderScannerModalProps> = ({
               </div>
             </div>
 
-            {/* Layout Switcher */}
-            <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 p-0.5 rounded-lg shrink-0 self-start sm:self-auto">
-              <span className="text-[10px] uppercase font-semibold text-zinc-500 px-1.5 hidden sm:inline">
-                {t("scanner.layoutSelectorLabel")}:
-              </span>
-              {(["2x2", "3x3", "4x3"] as const).map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setLayout(l)}
-                  className={`px-2.5 py-1 text-xs font-mono rounded transition-all cursor-pointer ${
-                    layout === l
-                      ? "bg-violet-600 text-white font-bold"
-                      : "text-zinc-400 hover:text-zinc-200"
-                  }`}
-                >
-                  {l}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-auto">
+              <ScannerCameraSelector
+                devices={videoDevices}
+                selectedDeviceId={selectedDeviceId}
+                onSelectDevice={switchCamera}
+              />
+
+              {/* Layout Switcher */}
+              <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 p-0.5 rounded-lg shrink-0">
+                <span className="text-[10px] uppercase font-semibold text-zinc-500 px-1.5 hidden sm:inline">
+                  {t("scanner.layoutSelectorLabel")}:
+                </span>
+                {(["2x2", "3x3", "4x3"] as const).map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => setLayout(l)}
+                    className={`px-2.5 py-1 text-xs font-mono rounded transition-all cursor-pointer ${
+                      layout === l
+                        ? "bg-violet-600 text-white font-bold"
+                        : "text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </DialogHeader>
@@ -195,7 +207,7 @@ export const BinderScannerModal: React.FC<BinderScannerModalProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={startCamera}
+                onClick={() => startCamera()}
                 className="mt-2 border-zinc-700 bg-zinc-800 text-xs text-zinc-200"
               >
                 <Camera className="size-3.5 mr-1.5 text-violet-400" />

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useTranslation } from "@/i18n"
 import type { CapturedBinderPage } from "./BinderScannerModal"
+import type { VideoDeviceOption } from "./ScannerCameraSelector"
 
 interface UseBinderScannerCameraProps {
   open: boolean
@@ -19,6 +20,14 @@ export function useBinderScannerCamera({
   const [isCameraActive, setIsCameraActive] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [flashActive, setFlashActive] = useState(false)
+  const [videoDevices, setVideoDevices] = useState<VideoDeviceOption[]>([])
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>(() => {
+    try {
+      return localStorage.getItem("masterdex_camera_device_id") || ""
+    } catch {
+      return ""
+    }
+  })
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -26,33 +35,131 @@ export function useBinderScannerCamera({
   const stillCountRef = useRef(0)
   const lastSnapTimeRef = useRef(0)
 
-  // Start camera stream
-  const startCamera = useCallback(async () => {
-    setCameraError(null)
+  // Enumerate connected cameras
+  const refreshDevices = useCallback(async () => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) {
+      return []
+    }
     try {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop())
-      }
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-        audio: false,
-      })
-      streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-      setIsCameraActive(true)
-    } catch (err: any) {
-      console.warn("Camera start error:", err)
-      setCameraError(t("scanner.cameraNotAvailable"))
-      setIsCameraActive(false)
+      const allDevices = await navigator.mediaDevices.enumerateDevices()
+      const videoInputs = allDevices.filter((d) => d.kind === "videoinput")
+      const options: VideoDeviceOption[] = videoInputs.map((d, index) => ({
+        deviceId: d.deviceId || `cam-${index}`,
+        label: d.label || `${t("scanner.cameraSelectorLabel")} ${index + 1}`,
+      }))
+      setVideoDevices(options)
+      return options
+    } catch (err) {
+      console.warn("Failed to enumerate devices:", err)
+      return []
     }
   }, [t])
+
+  // Listen for cameras plugged/unplugged
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.addEventListener) {
+      return
+    }
+    const handleDeviceChange = () => {
+      refreshDevices()
+    }
+    navigator.mediaDevices.addEventListener("devicechange", handleDeviceChange)
+    return () => {
+      navigator.mediaDevices.removeEventListener("devicechange", handleDeviceChange)
+    }
+  }, [refreshDevices])
+
+  // Start or restart camera stream
+  const startCamera = useCallback(
+    async (deviceIdToUse?: string) => {
+      setCameraError(null)
+      const targetId = deviceIdToUse !== undefined ? deviceIdToUse : selectedDeviceId
+      try {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop())
+          streamRef.current = null
+        }
+
+        const constraints: MediaStreamConstraints = {
+          video:
+            targetId && targetId !== "default"
+              ? {
+                  deviceId: { exact: targetId },
+                  width: { ideal: 1920 },
+                  height: { ideal: 1080 },
+                }
+              : {
+                  facingMode: { ideal: "environment" },
+                  width: { ideal: 1920 },
+                  height: { ideal: 1080 },
+                },
+          audio: false,
+        }
+
+        let stream: MediaStream
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints)
+        } catch (firstErr) {
+          if (targetId && targetId !== "default") {
+            try {
+              // Virtual cameras (e.g. phone/OBS) may reject exact constraints
+              stream = await navigator.mediaDevices.getUserMedia({
+                video: { deviceId: targetId },
+                audio: false,
+              })
+            } catch {
+              // Graceful fallback to default system camera if device disconnected
+              stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: "environment" } },
+                audio: false,
+              })
+            }
+          } else {
+            throw firstErr
+          }
+        }
+
+        streamRef.current = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          await videoRef.current.play()
+        }
+        setIsCameraActive(true)
+
+        // Query devices to obtain unlocked labels after permission grant
+        await refreshDevices()
+
+        // Sync active device ID if default was used
+        const activeTrack = stream.getVideoTracks()[0]
+        const activeId = activeTrack?.getSettings()?.deviceId
+        if (activeId && (!targetId || targetId === "default")) {
+          setSelectedDeviceId(activeId)
+        } else if (targetId && targetId !== "default") {
+          setSelectedDeviceId(targetId)
+        }
+      } catch (err: any) {
+        console.warn("Camera start error:", err)
+        setCameraError(t("scanner.cameraNotAvailable"))
+        setIsCameraActive(false)
+      }
+    },
+    [selectedDeviceId, refreshDevices, t]
+  )
+
+  // Switch to a chosen camera
+  const switchCamera = useCallback(
+    async (deviceId: string) => {
+      const previousId = selectedDeviceId
+      setSelectedDeviceId(deviceId)
+      try {
+        localStorage.setItem("masterdex_camera_device_id", deviceId)
+      } catch {}
+      if (!isCameraActive || previousId !== deviceId) {
+        await startCamera(deviceId)
+      }
+    },
+    [selectedDeviceId, isCameraActive, startCamera]
+  )
 
   // Stop camera stream
   const stopCamera = useCallback(() => {
@@ -70,13 +177,14 @@ export function useBinderScannerCamera({
   useEffect(() => {
     if (open) {
       startCamera()
+      refreshDevices()
     } else {
       stopCamera()
     }
     return () => {
       stopCamera()
     }
-  }, [open, startCamera, stopCamera])
+  }, [open, startCamera, stopCamera, refreshDevices])
 
   // Capture current camera frame
   const captureFrame = useCallback(() => {
@@ -154,8 +262,12 @@ export function useBinderScannerCamera({
     isCameraActive,
     cameraError,
     flashActive,
+    videoDevices,
+    selectedDeviceId,
     startCamera,
     stopCamera,
     captureFrame,
+    switchCamera,
+    refreshDevices,
   }
 }

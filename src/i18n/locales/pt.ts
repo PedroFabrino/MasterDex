@@ -276,6 +276,9 @@ export const pt: TranslationDictionary = {
     clearQueue: 'Limpar Todas',
     reviewPagesAction: 'Revisar {count} Páginas',
     alignGuideHint: 'Alinhe as bordas do fichário dentro das linhas pontilhadas',
+    cameraSelectorLabel: 'Câmera',
+    selectCameraPlaceholder: 'Selecionar Câmera',
+    defaultCamera: 'Câmera Padrão',
   },
   staging: {
     title: 'Área de Revisão & Confirmação',

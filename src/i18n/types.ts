@@ -285,6 +285,9 @@ export interface TranslationDictionary {
     clearQueue: string
     reviewPagesAction: string
     alignGuideHint: string
+    cameraSelectorLabel: string
+    selectCameraPlaceholder: string
+    defaultCamera: string
   }
   staging: {
     title: string
