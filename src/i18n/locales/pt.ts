@@ -301,6 +301,10 @@ export const pt: TranslationDictionary = {
     noCardsDetected: 'Nenhuma carta Pokémon detectada nesta página.',
     scanFailedPrompt: 'Falha ao escanear página. Verifique sua chave de API Gemini nas Configurações.',
     retryScanAction: 'Tentar Novamente',
+    changeArtwork: 'Alterar Carta',
+    changeSpecies: 'Alterar Pokémon',
+    clickToAdd: 'Clique para adicionar Pokémon',
+    selectedArtwork: 'Arte Selecionada',
   },
   portfolio: {
     pillTooltip: 'Valor da Pasta: {brl} ({usd})',

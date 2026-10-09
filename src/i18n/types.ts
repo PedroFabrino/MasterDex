@@ -310,6 +310,10 @@ export interface TranslationDictionary {
     noCardsDetected: string
     scanFailedPrompt: string
     retryScanAction: string
+    changeArtwork: string
+    changeSpecies: string
+    clickToAdd: string
+    selectedArtwork: string
   }
   portfolio: {
     pillTooltip: string

@@ -321,10 +321,10 @@ export class ExpansionsRepository {
   }): Promise<CardRecord[]> {
     const all = await this.getAllCards()
     return all.filter((c) => {
-      if (opts.pokedexId && c.pokedexId === opts.pokedexId) return true
-      if (opts.localId !== undefined && c.localId === opts.localId) return true
-      if (opts.name && c.name.toLowerCase().includes(opts.name.toLowerCase())) return true
-      return false
+      if (opts.pokedexId !== undefined && c.pokedexId !== opts.pokedexId) return false
+      if (opts.localId !== undefined && c.localId !== opts.localId) return false
+      if (opts.name && !c.name.toLowerCase().includes(opts.name.toLowerCase())) return false
+      return true
     })
   }
 }

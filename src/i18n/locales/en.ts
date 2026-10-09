@@ -301,6 +301,10 @@ export const en: TranslationDictionary = {
     noCardsDetected: 'No Pokémon cards detected on this page.',
     scanFailedPrompt: 'Failed to scan binder page. Please check your Gemini API key in Settings.',
     retryScanAction: 'Retry Scan',
+    changeArtwork: 'Change Artwork',
+    changeSpecies: 'Change Pokémon',
+    clickToAdd: 'Click to add Pokémon',
+    selectedArtwork: 'Selected Artwork',
   },
   portfolio: {
     pillTooltip: 'Portfolio Value: {brl} ({usd})',

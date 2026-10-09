@@ -11,6 +11,7 @@ vi.mock("../src/components/ui/dialog.js", () => ({
 }))
 
 import { StagingReviewModal } from "../src/components/scanner/StagingReviewModal.js"
+import { StagingSlotCard } from "../src/components/scanner/StagingSlotCard.js"
 import { I18nProvider } from "../src/i18n/I18nContext.js"
 
 describe("StagingReviewModal Component (Ticket #31 / Spec #27)", () => {
@@ -66,5 +67,43 @@ describe("StagingReviewModal Component (Ticket #31 / Spec #27)", () => {
     )
 
     expect(html).toBe("")
+  })
+
+  it("renders StagingSlotCard with artwork image and change artwork button", () => {
+    const slot = {
+      slotIndex: 0,
+      pokedexId: 34,
+      pokemonName: "Nidoking",
+      cardName: "Nidoking",
+      collectorNumber: "174/165",
+      setName: "151",
+      confidence: 0.96,
+      empty: false,
+      matchedCard: {
+        id: "sv03.5-174",
+        name: "Nidoking",
+        imageUrl: "https://assets.tcgdex.net/pt/sv/sv03.5/174/high.webp",
+        expansionId: "sv03.5",
+        rarity: "Secret Rare",
+      },
+    }
+
+    const html = renderToStaticMarkup(
+      React.createElement(
+        I18nProvider,
+        null,
+        React.createElement(StagingSlotCard, {
+          slot,
+          onOpenArtworkSelector: vi.fn(),
+          onOpenSpeciesModal: vi.fn(),
+        })
+      )
+    )
+
+    expect(html).toContain("Nidoking")
+    expect(html).toContain("#034")
+    expect(html).toContain("https://assets.tcgdex.net/pt/sv/sv03.5/174/high.webp")
+    expect(html).toContain("Alterar Carta")
+    expect(html).toContain("Alterar Pokémon")
   })
 })

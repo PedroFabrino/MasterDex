@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expansionsRepository } from '../repositories/expansionsRepository.js'
+import { tcgdexService } from './tcgdexService.js'
 import type { RawDetectedSlot, ScannedSlotResult, BinderScanResponse } from '../../shared/types.js'
 export type { RawDetectedSlot, ScannedSlotResult, BinderScanResponse }
 
@@ -287,24 +288,67 @@ Respond ONLY with valid JSON adhering strictly to this schema:
       const officialName = species ? species.officialName : (rawSlot.pokemonName || '')
       const localId = this.parseLocalId(rawSlot.collectorNumber)
 
-      // Match card in catalog
+      // Match card in catalog using tcgdexService first for full set coverage
       let matchedCard: ScannedSlotResult['matchedCard'] = null
-      try {
-        const matches = await expansionsRepository.findMatchingCards({
-          pokedexId: pokedexId || undefined,
-          localId,
-          name: rawSlot.cardName || rawSlot.pokemonName || undefined,
-        })
+      let matchedLocalId: string | null = null
+      let matchedSetName: string | null = null
 
-        if (matches.length > 0) {
-          const match = matches[0]
+      try {
+        let searchQuery = officialName
+        if (rawSlot.collectorNumber) {
+          searchQuery = `${officialName} ${rawSlot.collectorNumber}`
+        }
+
+        const tcgdexResults = await tcgdexService.searchCards(
+          searchQuery,
+          10,
+          pokedexId || undefined
+        )
+
+        if (tcgdexResults.length > 0) {
+          let bestMatch = tcgdexResults[0]
+          if (rawSlot.setName) {
+            const setLower = rawSlot.setName.toLowerCase()
+            const setMatch = tcgdexResults.find(
+              (c) =>
+                c.set?.name?.toLowerCase().includes(setLower) ||
+                c.set?.id?.toLowerCase().includes(setLower)
+            )
+            if (setMatch) {
+              bestMatch = setMatch
+            }
+          }
+
           matchedCard = {
-            id: match.id,
-            name: match.name,
-            imageUrl: match.imageUrl,
-            expansionId: match.expansionId,
-            marketPrice: match.marketPrice,
-            rarity: match.rarity,
+            id: bestMatch.id,
+            name: bestMatch.name,
+            imageUrl: bestMatch.imageUrl || bestMatch.thumbnailUrl || null,
+            expansionId: bestMatch.set?.id || 'unknown',
+            marketPrice: (bestMatch as any).marketPrice,
+            rarity: bestMatch.rarity,
+          }
+          matchedLocalId = bestMatch.localId || null
+          matchedSetName = bestMatch.set?.name || null
+        } else {
+          // Fallback to expansionsRepository baseline catalog
+          const matches = await expansionsRepository.findMatchingCards({
+            pokedexId: pokedexId || undefined,
+            localId,
+            name: rawSlot.cardName || rawSlot.pokemonName || undefined,
+          })
+
+          if (matches.length > 0) {
+            const match = matches[0]
+            matchedCard = {
+              id: match.id,
+              name: match.name,
+              imageUrl: match.imageUrl,
+              expansionId: match.expansionId,
+              marketPrice: match.marketPrice,
+              rarity: match.rarity,
+            }
+            matchedLocalId = String(match.localId)
+            matchedSetName = match.expansionId
           }
         }
       } catch (err) {
@@ -315,9 +359,9 @@ Respond ONLY with valid JSON adhering strictly to this schema:
         slotIndex: i,
         pokedexId,
         pokemonName: officialName,
-        cardName: rawSlot.cardName || officialName,
-        collectorNumber: rawSlot.collectorNumber || null,
-        setName: rawSlot.setName || null,
+        cardName: matchedCard?.name || rawSlot.cardName || officialName,
+        collectorNumber: rawSlot.collectorNumber || matchedLocalId || null,
+        setName: rawSlot.setName || matchedSetName || null,
         confidence: typeof rawSlot.confidence === 'number' ? rawSlot.confidence : 0.9,
         empty: false,
         matchedCard,

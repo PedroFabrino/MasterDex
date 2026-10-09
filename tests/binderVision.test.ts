@@ -131,6 +131,28 @@ describe('Backend Binder Vision API & Grid Recognition (Ticket #29 / Spec #27)',
       expect(res.slots[15].pokemonName).toBe('Mewtwo')
       expect(res.slots[7].empty).toBe(true)
     })
+
+    it('accurately matches numbered card (e.g. Nidoking 174/165 in 151) via tcgdexService', async () => {
+      const output = JSON.stringify({
+        slots: [
+          {
+            slotIndex: 0,
+            pokemonName: 'Nidoking',
+            cardName: 'Nidoking',
+            collectorNumber: '174/165',
+            setName: '151',
+            confidence: 0.96,
+            empty: false,
+          },
+        ],
+      })
+      const res = await binderVisionService.processVisionSlots(output, '3x3', 9)
+      expect(res.slots[0].pokemonName).toBe('Nidoking')
+      expect(res.slots[0].pokedexId).toBe(34)
+      expect(res.slots[0].matchedCard).toBeDefined()
+      expect(res.slots[0].matchedCard?.id).toBe('sv03.5-174')
+      expect(res.slots[0].matchedCard?.imageUrl).toContain('174')
+    })
   })
 
   describe('POST /api/binder/scan-page route', () => {

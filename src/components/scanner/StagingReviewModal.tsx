@@ -7,12 +7,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Edit2,
   Loader2,
   Sparkles,
   Database,
@@ -21,9 +19,14 @@ import {
 } from "lucide-react"
 import { useTranslation } from "@/i18n"
 import { apiClient } from "@/lib/apiClient"
+import { POKEMON, type TcgCard } from "@/data/pokemon"
 import { type CapturedBinderPage } from "./BinderScannerModal"
 import { type ScannedSlotResult, type BinderScanResponse } from "../../../shared/types"
 import { SpeciesCorrectionModal } from "./SpeciesCorrectionModal"
+import { StagingSlotCard } from "./StagingSlotCard"
+import { CardSelectorModal } from "../CardSelectorModal"
+
+const LAYOUT_SLOTS: Record<string, number> = { "2x2": 4, "4x3": 12, "4x4": 16, "3x3": 9 }
 
 interface StagingReviewModalProps {
   open: boolean
@@ -49,6 +52,7 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
   const [isSaving, setIsSaving] = useState(false)
   const [syncSummary, setSyncSummary] = useState<number | null>(null)
   const [editingSlot, setEditingSlot] = useState<ScannedSlotResult | null>(null)
+  const [artworkSelectingSlot, setArtworkSelectingSlot] = useState<ScannedSlotResult | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
 
   const scanAllPages = useCallback(async () => {
@@ -75,16 +79,8 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
       } catch (err: any) {
         console.error("Scan page error:", err)
         setScanError(err?.message || t("staging.scanFailedPrompt"))
-        // Default empty slots on error
-        const total =
-          page.layout === "2x2"
-            ? 4
-            : page.layout === "4x3"
-              ? 12
-              : page.layout === "4x4"
-                ? 16
-                : 9
-        results[page.id] = Array.from({ length: total }).map((_, i) => ({
+        const total = LAYOUT_SLOTS[page.layout] || 9
+        results[page.id] = Array.from({ length: total }, (_, i) => ({
           slotIndex: i,
           pokedexId: null,
           pokemonName: "",
@@ -126,6 +122,46 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
     setEditingSlot(null)
   }
 
+  // Handle artwork selection from CardSelectorModal
+  const handleSelectArtwork = (
+    pokemonId: number,
+    card: TcgCard | null,
+    _cardLanguage?: string
+  ) => {
+    if (!artworkSelectingSlot || !currentPage) return
+    handleUpdateSlot(artworkSelectingSlot.slotIndex, {
+      pokedexId: pokemonId,
+      pokemonName: card?.name || artworkSelectingSlot.pokemonName,
+      cardName: card?.name || artworkSelectingSlot.cardName,
+      matchedCard: card
+        ? {
+            id: card.id,
+            name: card.name,
+            imageUrl: card.imageUrl,
+            expansionId: card.setName || "",
+            rarity: card.isHolo ? "Holo" : undefined,
+          }
+        : null,
+      collectorNumber: card?.number || (card?.id ? card.id.split("-")[1] : artworkSelectingSlot.collectorNumber),
+      setName: card?.setName || artworkSelectingSlot.setName,
+      empty: false,
+      confidence: 1.0,
+    })
+    setArtworkSelectingSlot(null)
+  }
+
+  const handleUnmarkSlot = (_pokemonId: number) => {
+    if (!artworkSelectingSlot || !currentPage) return
+    handleUpdateSlot(artworkSelectingSlot.slotIndex, {
+      empty: true,
+      pokedexId: null,
+      pokemonName: "",
+      cardName: "",
+      matchedCard: null,
+    })
+    setArtworkSelectingSlot(null)
+  }
+
   // Bulk Save all detected Pokémon
   const handleConfirmAll = useCallback(async () => {
     setIsSaving(true)
@@ -144,7 +180,7 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
             pokedexId: s.pokedexId,
             collected: true,
             cardId: s.matchedCard?.id || null,
-            cardName: s.cardName || s.pokemonName,
+            cardName: s.matchedCard?.name || s.cardName || s.pokemonName,
             cardImageUrl: s.matchedCard?.imageUrl || null,
           })
         }
@@ -279,68 +315,25 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
               </div>
             )}
 
-            {/* Visual Staging Grid */}
+            {/* Visual Staging Grid with Artwork Previews */}
             <div
-              className={`grid gap-2.5 p-2 bg-zinc-900/60 rounded-xl border border-zinc-800 max-h-[55vh] overflow-y-auto ${
+              className={`grid gap-2.5 p-2 bg-zinc-900/60 rounded-xl border border-zinc-800 max-h-[58vh] overflow-y-auto ${
                 currentPage?.layout === "2x2"
                   ? "grid-cols-2"
                   : currentPage?.layout === "4x4"
                     ? "grid-cols-2 sm:grid-cols-4"
                     : currentPage?.layout === "4x3"
                       ? "grid-cols-3 sm:grid-cols-4"
-                      : "grid-cols-3"
+                      : "grid-cols-2 sm:grid-cols-3"
               }`}
             >
               {currentSlots.map((slot) => (
-                <div
+                <StagingSlotCard
                   key={slot.slotIndex}
-                  onClick={() => setEditingSlot(slot)}
-                  className={`relative p-2.5 rounded-lg border transition-all cursor-pointer flex flex-col justify-between min-h-[96px] ${
-                    slot.empty
-                      ? "border-dashed border-zinc-800 bg-zinc-950/40 hover:border-zinc-700"
-                      : "border-zinc-700 bg-zinc-950/90 hover:border-violet-500 shadow-sm"
-                  }`}
-                >
-                  <span className="absolute top-1.5 left-1.5 text-[9px] font-mono text-zinc-600">
-                    #{slot.slotIndex + 1}
-                  </span>
-
-                  {slot.empty ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-zinc-600 gap-1">
-                      <span className="text-[11px] italic">{t("staging.emptySlot")}</span>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-start justify-between gap-1 pl-4">
-                        <div className="min-w-0">
-                          <h4 className="text-xs font-bold text-zinc-100 truncate">
-                            {slot.pokemonName || slot.cardName}
-                          </h4>
-                          {slot.pokedexId && (
-                            <span className="text-[10px] text-violet-400 font-mono font-bold">
-                              #{String(slot.pokedexId).padStart(3, "0")}
-                            </span>
-                          )}
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={`text-[9px] px-1 py-0 ${
-                            slot.confidence >= 0.85
-                              ? "border-emerald-700 text-emerald-400"
-                              : "border-amber-700 text-amber-400"
-                          }`}
-                        >
-                          {slot.confidence >= 0.85 ? t("staging.highConfidence") : t("staging.lowConfidence")}
-                        </Badge>
-                      </div>
-
-                      <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-400">
-                        <span className="font-mono truncate">{slot.collectorNumber || slot.setName || ""}</span>
-                        <Edit2 className="size-3 text-zinc-500" />
-                      </div>
-                    </>
-                  )}
-                </div>
+                  slot={slot}
+                  onOpenArtworkSelector={(s) => setArtworkSelectingSlot(s)}
+                  onOpenSpeciesModal={(s) => setEditingSlot(s)}
+                />
               ))}
             </div>
 
@@ -362,11 +355,34 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
           </div>
         )}
 
-        {/* Inline Correction Popover / Dialog */}
+        {/* Inline Species Correction Modal */}
         <SpeciesCorrectionModal
           editingSlot={editingSlot}
           onClose={() => setEditingSlot(null)}
           onUpdateSlot={handleUpdateSlot}
+        />
+
+        {/* Card Artwork Selection Modal */}
+        <CardSelectorModal
+          open={Boolean(artworkSelectingSlot)}
+          onClose={() => setArtworkSelectingSlot(null)}
+          pokemon={artworkSelectingSlot?.pokedexId ? POKEMON.find((p) => p.id === artworkSelectingSlot.pokedexId) || {
+            id: artworkSelectingSlot.pokedexId,
+            name: artworkSelectingSlot.pokemonName,
+            spriteUrl: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${artworkSelectingSlot.pokedexId}.png`,
+          } : null}
+          slot={artworkSelectingSlot?.pokedexId ? {
+            pokemonId: artworkSelectingSlot.pokedexId,
+            tcgCard: artworkSelectingSlot.matchedCard ? {
+              id: artworkSelectingSlot.matchedCard.id,
+              name: artworkSelectingSlot.matchedCard.name,
+              setName: artworkSelectingSlot.setName || artworkSelectingSlot.matchedCard.expansionId || "",
+              number: artworkSelectingSlot.collectorNumber || "",
+              imageUrl: artworkSelectingSlot.matchedCard.imageUrl || "",
+            } : null,
+          } : null}
+          onSelectCard={handleSelectArtwork}
+          onUnmark={handleUnmarkSlot}
         />
       </DialogContent>
     </Dialog>
