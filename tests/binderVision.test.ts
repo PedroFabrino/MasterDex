@@ -295,7 +295,7 @@ describe('Backend Binder Vision API & Grid Recognition (Ticket #29 / Spec #27)',
         )
         expect(mockFetch).toHaveBeenNthCalledWith(
           2,
-          expect.stringContaining('gemini-2.5-flash:generateContent?key=AIzaSyFallbackKey'),
+          expect.stringContaining('gemini-3.5-flash:generateContent?key=AIzaSyFallbackKey'),
           expect.any(Object)
         )
       } finally {
@@ -350,7 +350,7 @@ describe('Backend Binder Vision API & Grid Recognition (Ticket #29 / Spec #27)',
         )
         expect(mockFetch).toHaveBeenNthCalledWith(
           2,
-          expect.stringContaining('gemini-2.5-flash:generateContent?key=AIzaSyHighDemandFallbackKey'),
+          expect.stringContaining('gemini-3.5-flash:generateContent?key=AIzaSyHighDemandFallbackKey'),
           expect.any(Object)
         )
       } finally {
