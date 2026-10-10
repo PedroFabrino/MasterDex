@@ -66,18 +66,44 @@ export function CardSlot({ pokemon, slot, onClick, isHighlighted }: CardSlotProp
         </div>
       )}
 
-      {/* TCG badge */}
+      {/* TCG and Condition badges */}
       {hasTcgCard && (
-        <Badge
-          variant="outline"
-          className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-10 text-[9px] px-1.5 py-0 h-4 border-violet-500/60 text-violet-300 bg-zinc-900/80 backdrop-blur-sm whitespace-nowrap"
-        >
-          {slot?.cardLanguage
-            ? slot.cardLanguage.toUpperCase()
-            : slot?.tcgCard?.language
-            ? slot.tcgCard.language.toUpperCase()
-            : t("cardSlot.tcgFallbackBadge")}
-        </Badge>
+        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1">
+          <Badge
+            variant="outline"
+            className="text-[9px] px-1.5 py-0 h-4 border-violet-500/60 text-violet-300 bg-zinc-900/80 backdrop-blur-sm whitespace-nowrap"
+          >
+            {slot?.cardLanguage
+              ? slot.cardLanguage.toUpperCase()
+              : slot?.tcgCard?.language
+              ? slot.tcgCard.language.toUpperCase()
+              : t("cardSlot.tcgFallbackBadge")}
+          </Badge>
+
+          {slot?.cardCondition && slot.cardCondition !== "NM" && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[9px] px-1 py-0 h-4 font-mono font-bold backdrop-blur-sm whitespace-nowrap",
+                slot.cardCondition === "DMG"
+                  ? "border-rose-500/70 text-rose-300 bg-rose-950/80"
+                  : slot.cardCondition === "HP"
+                  ? "border-amber-500/70 text-amber-300 bg-amber-950/80"
+                  : slot.cardCondition === "MP"
+                  ? "border-yellow-500/70 text-yellow-300 bg-yellow-950/80"
+                  : "border-sky-500/70 text-sky-300 bg-sky-950/80"
+              )}
+            >
+              {slot.cardCondition === "DMG"
+                ? t("cardSlot.conditionBadgeDmg")
+                : slot.cardCondition === "HP"
+                ? t("cardSlot.conditionBadgeHp")
+                : slot.cardCondition === "MP"
+                ? t("cardSlot.conditionBadgeMp")
+                : t("cardSlot.conditionBadgeLp")}
+            </Badge>
+          )}
+        </div>
       )}
 
 

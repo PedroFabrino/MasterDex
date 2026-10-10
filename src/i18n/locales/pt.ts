@@ -41,6 +41,10 @@ export const pt: TranslationDictionary = {
   cardSlot: {
     slotAriaLabel: 'Espaço #{id} {name}, {status}',
     tcgFallbackBadge: 'TCG',
+    conditionBadgeDmg: 'D',
+    conditionBadgeHp: 'HP',
+    conditionBadgeMp: 'MP',
+    conditionBadgeLp: 'LP',
   },
 
   sidebar: {
@@ -73,6 +77,14 @@ export const pt: TranslationDictionary = {
     rarityFilter: 'Raridade Alvo',
     rarityBypassedHint: 'Busca por código ativa — todas as raridades exibidas',
     printLanguageLabel: 'Idioma da Carta',
+    conditionLabel: 'Estado de Conservação',
+    conditionTrigger: 'Estado: {condition}',
+    conditionNm: 'Near Mint (NM - Quase Nova)',
+    conditionLp: 'Lightly Played (LP - Pouco Usada)',
+    conditionMp: 'Moderately Played (MP - Moderada)',
+    conditionHp: 'Heavily Played (HP - Muito Usada)',
+    conditionDmg: 'Damaged (DMG - Danificada)',
+    conditionImpact: '{pct}% da cotação de mercado',
     otherLanguages: 'Outro...',
     langAll: 'Todos',
     langPt: 'Português (PT)',
@@ -323,5 +335,8 @@ export const pt: TranslationDictionary = {
     emptyDescription: 'Vincule cartas TCG físicas aos bolsos da pasta para acompanhar a cotação de mercado em tempo real.',
     topCardsTitle: 'Top 5 Cartas Mais Valiosas',
     regionalBreakdownTitle: 'Distribuição por Região / Geração',
+    derivationExact: 'Liga ({condition})',
+    derivationNearest: 'Liga (Baseado em {condition})',
+    derivationFallback: 'Estimado ({pct}% de NM)',
   },
 }

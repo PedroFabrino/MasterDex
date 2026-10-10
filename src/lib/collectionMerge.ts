@@ -34,6 +34,7 @@ export function mergeCloudAndLocalCollection(
             }
           : null,
         cardLanguage: item.cardLanguage || undefined,
+        cardCondition: item.cardCondition || undefined,
       }
     }
   }

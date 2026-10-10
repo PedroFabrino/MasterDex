@@ -41,6 +41,10 @@ export interface TranslationDictionary {
   cardSlot: {
     slotAriaLabel: string
     tcgFallbackBadge: string
+    conditionBadgeDmg: string
+    conditionBadgeHp: string
+    conditionBadgeMp: string
+    conditionBadgeLp: string
   }
 
   sidebar: {
@@ -73,6 +77,14 @@ export interface TranslationDictionary {
     rarityFilter: string
     rarityBypassedHint: string
     printLanguageLabel: string
+    conditionLabel: string
+    conditionTrigger: string
+    conditionNm: string
+    conditionLp: string
+    conditionMp: string
+    conditionHp: string
+    conditionDmg: string
+    conditionImpact: string
     otherLanguages: string
     langAll: string
     langPt: string
@@ -332,6 +344,9 @@ export interface TranslationDictionary {
     emptyDescription: string
     topCardsTitle: string
     regionalBreakdownTitle: string
+    derivationExact: string
+    derivationNearest: string
+    derivationFallback: string
   }
 }
 

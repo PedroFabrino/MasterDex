@@ -126,7 +126,8 @@ export const StagingReviewModal: React.FC<StagingReviewModalProps> = ({
   const handleSelectArtwork = (
     pokemonId: number,
     card: TcgCard | null,
-    _cardLanguage?: string
+    _cardLanguage?: string,
+    _cardCondition?: string
   ) => {
     if (!artworkSelectingSlot || !currentPage) return
     handleUpdateSlot(artworkSelectingSlot.slotIndex, {

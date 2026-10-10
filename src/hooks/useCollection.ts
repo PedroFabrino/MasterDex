@@ -76,6 +76,7 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
         cardName?: string | null
         cardImageUrl?: string | null
         cardLanguage?: string | null
+        cardCondition?: string | null
       }
     ) => {
       if (!currentUser) return
@@ -97,6 +98,7 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
             cardName: opts.cardName ?? null,
             cardImageUrl: opts.cardImageUrl ?? null,
             cardLanguage: opts.cardLanguage ?? null,
+            cardCondition: opts.cardCondition ?? null,
           },
           token
         )
@@ -141,11 +143,12 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
   )
 
   const handleSelectCard = useCallback(
-    (pokemonId: number, card: TcgCard | null, cardLanguage?: string) => {
+    (pokemonId: number, card: TcgCard | null, cardLanguage?: string, cardCondition?: string) => {
       const finalLang = cardLanguage ?? card?.language ?? "en"
+      const finalCondition = cardCondition ?? "NM"
       setCollected((prev) => ({
         ...prev,
-        [pokemonId]: toCollectedSlot(pokemonId, card, card ? finalLang : undefined),
+        [pokemonId]: toCollectedSlot(pokemonId, card, card ? finalLang : undefined, card ? finalCondition : undefined),
       }))
       syncSlotToBackend(pokemonId, {
         collected: true,
@@ -153,6 +156,7 @@ export function useCollection({ currentUser }: UseCollectionOptions) {
         cardName: card?.name ?? null,
         cardImageUrl: card?.imageUrl ?? null,
         cardLanguage: card ? finalLang : null,
+        cardCondition: card ? finalCondition : null,
       })
     },
     [syncSlotToBackend]

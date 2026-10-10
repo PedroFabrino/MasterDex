@@ -9,14 +9,21 @@ import { apiClient } from "@/lib/apiClient"
 import { mapSearchResultToTcgCard } from "@/lib/cardMapping"
 import { CardSelectorGrid } from "./CardSelectorGrid"
 import { CardPrintLanguageSelector } from "./CardPrintLanguageSelector"
+import { CardConditionSelector } from "./CardConditionSelector"
 import { CardSelectorSearch } from "./CardSelectorSearch"
+import { normalizeCardCondition, type CardCondition } from "../../shared/conditionConfig.js"
 
 interface CardSelectorModalProps {
   pokemon: Pokemon | null
   slot: CollectedSlot | null
   open: boolean
   onClose: () => void
-  onSelectCard: (pokemonId: number, card: TcgCard | null, cardLanguage?: string) => void
+  onSelectCard: (
+    pokemonId: number,
+    card: TcgCard | null,
+    cardLanguage?: string,
+    cardCondition?: string
+  ) => void
   onUnmark: (pokemonId: number) => void
 }
 
@@ -33,6 +40,7 @@ export function CardSelectorModal({
   const [debouncedQuery, setDebouncedQuery] = useState(pokemon?.name ?? "")
   const [rarity, setRarity] = useState<string>("any")
   const [selectedLanguage, setSelectedLanguage] = useState<string>("all")
+  const [selectedCondition, setSelectedCondition] = useState<CardCondition>("NM")
   const [liveCards, setLiveCards] = useState<TcgCard[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -57,6 +65,12 @@ export function CardSelectorModal({
         setSelectedLanguage(slot.tcgCard.language)
       } else {
         setSelectedLanguage("all")
+      }
+
+      if (slot?.cardCondition) {
+        setSelectedCondition(normalizeCardCondition(slot.cardCondition))
+      } else {
+        setSelectedCondition("NM")
       }
     }
   }, [open, slot])
@@ -174,10 +188,15 @@ export function CardSelectorModal({
   const handleCardPick = useCallback(
     (pokemonId: number, card: TcgCard | null) => {
       const chosenLang = card?.language || (selectedLanguage !== "all" ? selectedLanguage : "en")
-      onSelectCard(pokemonId, card, card ? chosenLang : undefined)
+      onSelectCard(
+        pokemonId,
+        card,
+        card ? chosenLang : undefined,
+        card ? selectedCondition : undefined
+      )
       onClose()
     },
-    [onSelectCard, selectedLanguage, onClose]
+    [onSelectCard, selectedLanguage, selectedCondition, onClose]
   )
 
   if (!pokemon) return null
@@ -232,6 +251,11 @@ export function CardSelectorModal({
         <CardPrintLanguageSelector
           selectedLanguage={selectedLanguage}
           onSelectLanguage={setSelectedLanguage}
+        />
+
+        <CardConditionSelector
+          selectedCondition={selectedCondition}
+          onSelectCondition={setSelectedCondition}
         />
 
         <div>

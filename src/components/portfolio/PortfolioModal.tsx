@@ -10,7 +10,11 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Briefcase, Sparkles, MapPin, DollarSign } from "lucide-react"
 import { useTranslation } from "@/i18n"
-import type { PortfolioSummary } from "../../../shared/types.js"
+import type { PortfolioSummary, PortfolioTopCard } from "../../../shared/types.js"
+import {
+  CONDITION_BASELINE_MULTIPLIERS,
+  type CardCondition,
+} from "../../../shared/conditionConfig.js"
 
 interface PortfolioModalProps {
   open: boolean
@@ -42,6 +46,18 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ open, onClose, p
   const formatUSD = (val: number | null | undefined) => {
     if (val == null || isNaN(val)) return "$0.00"
     return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(val)
+  }
+
+  const getDerivationLabel = (card: PortfolioTopCard) => {
+    const cond = card.condition ?? "NM"
+    if (card.conditionDerivation === "exact") {
+      return t("portfolio.derivationExact", { condition: cond })
+    }
+    if (card.conditionDerivation === "nearest") {
+      return t("portfolio.derivationNearest", { condition: cond })
+    }
+    const pct = Math.round((CONDITION_BASELINE_MULTIPLIERS[cond as CardCondition] ?? 1.0) * 100)
+    return t("portfolio.derivationFallback", { pct })
   }
 
   const totalBrl = portfolio?.totalBrl ?? 0
@@ -161,6 +177,11 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ open, onClose, p
                         <Badge className="absolute top-1 left-1 bg-amber-500/90 text-zinc-950 font-mono text-[9px] px-1 py-0 h-3.5">
                           #{idx + 1}
                         </Badge>
+                        {card.condition && card.condition !== "NM" && (
+                          <Badge className="absolute top-1 right-1 bg-zinc-950/90 text-amber-300 border border-amber-600/70 font-mono text-[9px] px-1 py-0 h-3.5">
+                            {card.condition}
+                          </Badge>
+                        )}
                       </div>
                       <p className="font-semibold text-zinc-200 truncate text-[11px]" title={card.name}>
                         {card.name}
@@ -168,6 +189,14 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ open, onClose, p
                       <span className="font-bold text-emerald-400 font-mono text-[11px]">
                         {formatBRL(card.priceInBrl)}
                       </span>
+                      {card.condition && card.condition !== "NM" && card.conditionDerivation && (
+                        <span
+                          className="text-[9px] text-zinc-400 font-mono truncate"
+                          title={getDerivationLabel(card)}
+                        >
+                          {getDerivationLabel(card)}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>

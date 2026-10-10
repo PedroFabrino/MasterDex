@@ -14,6 +14,8 @@ export interface RawCardData {
   thumbnailUrl?: string | null
   language?: string | null
   cardLanguage?: string | null
+  condition?: string | null
+  cardCondition?: string | null
   isHolo?: boolean
 }
 
@@ -24,6 +26,7 @@ export interface BatchSyncEntry {
   cardName?: string | null
   cardImageUrl?: string | null
   cardLanguage?: string | null
+  cardCondition?: string | null
 }
 
 /**
@@ -77,12 +80,14 @@ export function toTcgCard(raw: RawCardData | null | undefined): TcgCard | null {
 export function toCollectedSlot(
   pokemonId: number,
   card: TcgCard | null,
-  cardLanguage?: string
+  cardLanguage?: string,
+  cardCondition?: string
 ): CollectedSlot {
   return {
     pokemonId,
     tcgCard: card,
     cardLanguage: card ? (cardLanguage ?? card.language) : undefined,
+    cardCondition: card ? (cardCondition ?? "NM") : undefined,
   }
 }
 
@@ -97,6 +102,7 @@ export function mapBackendItemToCollectedSlot(pokemonId: number, item: any): Col
       pokemonId,
       tcgCard: item.tcgCard,
       cardLanguage: item.cardLanguage || item.tcgCard.language || undefined,
+      cardCondition: item.cardCondition || undefined,
     }
   }
 
@@ -106,6 +112,7 @@ export function mapBackendItemToCollectedSlot(pokemonId: number, item: any): Col
     cardNumber: item.cardNumber || item.number,
     cardImageUrl: item.cardImageUrl || item.imageUrl,
     cardLanguage: item.cardLanguage,
+    cardCondition: item.cardCondition,
     thumbnailUrl: item.thumbnailUrl,
   })
 
@@ -113,6 +120,7 @@ export function mapBackendItemToCollectedSlot(pokemonId: number, item: any): Col
     pokemonId,
     tcgCard: card,
     cardLanguage: item.cardLanguage || card?.language || undefined,
+    cardCondition: item.cardCondition || undefined,
   }
 }
 
@@ -143,5 +151,6 @@ export function toBatchSyncEntry(pokemonId: number, slot: CollectedSlot): BatchS
     cardName: slot.tcgCard?.name ?? null,
     cardImageUrl: slot.tcgCard?.imageUrl ?? null,
     cardLanguage: slot.cardLanguage ?? slot.tcgCard?.language ?? null,
+    cardCondition: slot.cardCondition ?? (slot.tcgCard ? 'NM' : null),
   }
 }

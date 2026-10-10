@@ -42,6 +42,7 @@ export interface PatchSlotPayload {
   cardName?: string | null
   cardImageUrl?: string | null
   cardLanguage?: string | null
+  cardCondition?: string | null
 }
 
 export interface UpdatePreferencesPayload {

@@ -62,4 +62,18 @@ describe("Guest Collection Merge Logic (Ticket #13)", () => {
     expect(slotsToSync.length).toBe(1)
     expect(slotsToSync[0].pokemonId).toBe(6)
   })
+
+  it("preserves cardCondition from cloud items", () => {
+    const cloudItems = {
+      "6": {
+        pokedexId: 6,
+        collected: true,
+        cardId: "base1-4",
+        cardName: "Charizard",
+        cardCondition: "DMG",
+      },
+    }
+    const { merged } = mergeCloudAndLocalCollection(cloudItems, {})
+    expect(merged[6].cardCondition).toBe("DMG")
+  })
 })

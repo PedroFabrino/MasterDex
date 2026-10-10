@@ -125,7 +125,15 @@ describe("Card Mapping Deduplication (Ticket #23)", () => {
       cardName: "Pikachu",
       cardImageUrl: "https://example.com/pika.png",
       cardLanguage: "pt",
+      cardCondition: "NM",
     })
+
+    const dmgSlot = {
+      ...slot,
+      cardCondition: "DMG",
+    }
+    const dmgEntry = toBatchSyncEntry(25, dmgSlot)
+    expect(dmgEntry.cardCondition).toBe("DMG")
   })
 })
 

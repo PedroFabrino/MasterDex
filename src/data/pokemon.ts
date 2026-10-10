@@ -22,6 +22,7 @@ export interface CollectedSlot {
   pokemonId: number
   tcgCard: TcgCard | null // null = default sprite
   cardLanguage?: string
+  cardCondition?: string
 }
 
 // Pre-built TCG card mock data per Pokémon

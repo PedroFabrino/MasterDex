@@ -41,6 +41,10 @@ export const en: TranslationDictionary = {
   cardSlot: {
     slotAriaLabel: 'Slot #{id} {name}, {status}',
     tcgFallbackBadge: 'TCG',
+    conditionBadgeDmg: 'D',
+    conditionBadgeHp: 'HP',
+    conditionBadgeMp: 'MP',
+    conditionBadgeLp: 'LP',
   },
 
   sidebar: {
@@ -73,6 +77,14 @@ export const en: TranslationDictionary = {
     rarityFilter: 'Target Rarity',
     rarityBypassedHint: 'Code search active — all rarities shown',
     printLanguageLabel: 'Print Language',
+    conditionLabel: 'Condition',
+    conditionTrigger: 'Condition: {condition}',
+    conditionNm: 'Near Mint (NM)',
+    conditionLp: 'Lightly Played (LP)',
+    conditionMp: 'Moderately Played (MP)',
+    conditionHp: 'Heavily Played (HP)',
+    conditionDmg: 'Damaged (DMG)',
+    conditionImpact: '{pct}% of market price',
     otherLanguages: 'Other...',
     langAll: 'All',
     langPt: 'Portuguese (PT)',
@@ -323,5 +335,8 @@ export const en: TranslationDictionary = {
     emptyDescription: 'Assign physical TCG cards to your binder slots to track their live market valuation.',
     topCardsTitle: 'Top 5 Most Valuable Cards',
     regionalBreakdownTitle: 'Regional Portfolio Distribution',
+    derivationExact: 'Liga ({condition})',
+    derivationNearest: 'Liga (Based on {condition})',
+    derivationFallback: 'Estimated ({pct}% of NM)',
   },
 }

@@ -14,7 +14,7 @@ interface AppModalsProps {
   collected: Record<number, CollectedSlot>
   modalOpen: boolean
   onCloseModal: () => void
-  onSelectCard: (pokemonId: number, card: TcgCard | null, cardLanguage?: string) => void
+  onSelectCard: (pokemonId: number, card: TcgCard | null, cardLanguage?: string, cardCondition?: string) => void
   onUnmark: (pokemonId: number) => void
   importModalOpen: boolean
   onCloseImportModal: () => void

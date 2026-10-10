@@ -4,6 +4,7 @@ import { collectorRepository } from '../repositories/collectorRepository.js'
 import { sheetSeedService } from '../services/sheetSeedService.js'
 import { verifySessionToken } from '../services/authService.js'
 import { tcgdexPricingService } from '../services/tcgdexPricingService.js'
+import { cardConditionScraperService } from '../services/cardConditionScraperService.js'
 
 export const collectionRoutes = new Hono()
 
@@ -40,6 +41,7 @@ const updateCollectionSchema = z.object({
   cardName: z.string().nullable().optional(),
   cardImageUrl: z.string().nullable().optional(),
   cardLanguage: z.string().nullable().optional(),
+  cardCondition: z.enum(['NM', 'LP', 'MP', 'HP', 'DMG']).nullable().optional(),
 })
 
 
@@ -70,6 +72,7 @@ const batchSyncSchema = z.object({
         cardName: z.string().nullable().optional(),
         cardImageUrl: z.string().nullable().optional(),
         cardLanguage: z.string().nullable().optional(),
+        cardCondition: z.enum(['NM', 'LP', 'MP', 'HP', 'DMG']).nullable().optional(),
       })
     )
     .optional(),
@@ -94,6 +97,7 @@ collectionRoutes.get('/', async (c) => {
         cardName?: string | null
         cardImageUrl?: string | null
         cardLanguage?: string | null
+        cardCondition?: string | null
       }
     > = {}
 
@@ -105,6 +109,7 @@ collectionRoutes.get('/', async (c) => {
         cardName: item.cardName,
         cardImageUrl: item.cardImageUrl,
         cardLanguage: item.cardLanguage ?? 'en',
+        cardCondition: item.cardCondition ?? 'NM',
       }
     }
     return c.json({
@@ -143,11 +148,18 @@ collectionRoutes.patch('/:pokemonId', async (c) => {
         cardName: parsed.data.cardName,
         cardImageUrl: parsed.data.cardImageUrl,
         cardLanguage: parsed.data.cardLanguage,
+        cardCondition: parsed.data.cardCondition,
       }
     )
 
     if (parsed.data.cardId) {
       await tcgdexPricingService.ensureCardsPricing([parsed.data.cardId]).catch(() => {})
+      if (parsed.data.cardCondition && parsed.data.cardCondition !== 'NM') {
+        cardConditionScraperService.enqueue({
+          cardId: parsed.data.cardId,
+          cardName: parsed.data.cardName ?? undefined,
+        })
+      }
     }
 
     return c.json({ item: updated })
@@ -257,6 +269,7 @@ collectionRoutes.post('/batch', async (c) => {
       cardName?: string | null
       cardImageUrl?: string | null
       cardLanguage?: string | null
+      cardCondition?: string | null
     }> = []
 
     if (parsed.data.entries) {
@@ -270,6 +283,16 @@ collectionRoutes.post('/batch', async (c) => {
     const cardIdsToPrice = entries.map((e) => e.cardId).filter(Boolean) as string[]
     if (cardIdsToPrice.length > 0) {
       tcgdexPricingService.ensureCardsPricing(cardIdsToPrice).catch(() => {})
+    }
+
+    const nonNmCards = entries.filter(
+      (e) => e.cardId && e.cardCondition && e.cardCondition !== 'NM'
+    )
+    for (const card of nonNmCards) {
+      cardConditionScraperService.enqueue({
+        cardId: card.cardId!,
+        cardName: card.cardName ?? undefined,
+      })
     }
 
     const collectedCount = entries.filter((e) => e.collected).length
