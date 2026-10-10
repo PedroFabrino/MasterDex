@@ -28,7 +28,7 @@ export function mergeCloudAndLocalCollection(
               id: item.cardId,
               name: item.cardName || "",
               setName: item.cardId.split("-")[0]?.toUpperCase() || "TCG",
-              number: item.cardId.split("-")[1] || "1",
+              number: item.cardNumber || item.number || item.cardId.split("-")[1] || "1",
               imageUrl: item.cardImageUrl || "",
               language: item.cardLanguage || "en",
             }

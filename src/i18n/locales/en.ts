@@ -214,7 +214,8 @@ export const en: TranslationDictionary = {
     shortcutBadge: 'Ctrl+K',
     clearAria: 'Clear search',
     collectedStatus: 'Collected',
-    cardAssignedStatus: 'TCG Card',
+    cardAssignedStatus: 'Collected · TCG Card',
+    cardAssignedWithNumberStatus: 'Collected · {number}',
   },
   settings: {
     title: 'Collector Settings',

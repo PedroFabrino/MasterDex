@@ -31,6 +31,45 @@ describe('BinderSearchBar - Species Name Matching Logic (Ticket #24 / Issue #33)
     expect(poryResults.map((p) => p.name)).toEqual(['Porygon', 'Porygon2', 'Porygon-Z'])
   })
 
+  it('matches species by Pokédex number with or without hash prefix', () => {
+    const pikachuResults = filterPokemonByName(POKEMON, '25')
+    expect(pikachuResults.map((p) => p.name)).toContain('Pikachu')
+
+    const bulbasaurResults = filterPokemonByName(POKEMON, '#1')
+    expect(bulbasaurResults.map((p) => p.name)).toContain('Bulbasaur')
+  })
+
+  it('matches species by assigned card collector number when collected is provided', () => {
+    const mockCollected = {
+      6: {
+        pokemonId: 6,
+        tcgCard: {
+          id: 'base1-4',
+          name: 'Charizard',
+          setName: 'Base Set',
+          number: '4/102',
+          imageUrl: 'https://example.com/card.png',
+        },
+      },
+      173: {
+        pokemonId: 173,
+        tcgCard: {
+          id: 'sv3-172',
+          name: 'Cleffa',
+          setName: 'Obsidian Flames',
+          number: '172/132',
+          imageUrl: 'https://example.com/cleffa.png',
+        },
+      },
+    }
+
+    const charResults = filterPokemonByName(POKEMON, '4/102', mockCollected)
+    expect(charResults.map((p) => p.name)).toContain('Charizard')
+
+    const cleffaResults = filterPokemonByName(POKEMON, '172/132', mockCollected)
+    expect(cleffaResults.map((p) => p.name)).toContain('Cleffa')
+  })
+
   it('computes correct page and region for any National Dex Pokémon', () => {
     const bulbasaur = POKEMON.find((p) => p.id === 1)!
     const pidgey = POKEMON.find((p) => p.id === 16)!
@@ -90,6 +129,80 @@ describe('BinderSearchBar - Component UI & Static Markup (Ticket #24 / Issue #33
     expect(html).toContain('Pikachu')
     expect(html).toContain('Pág. 2 · Kanto')
     expect(html).toContain('Capturado')
+  })
+
+  it('renders rich status badge with collector number when a card is linked (Issue #51/#52)', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(BinderSearchBar, {
+        onSelectPokemon: vi.fn(),
+        collected: {
+          6: {
+            pokemonId: 6,
+            tcgCard: {
+              id: 'base1-4',
+              name: 'Charizard',
+              setName: 'Base Set',
+              number: '4/102',
+              imageUrl: 'https://example.com/card.png',
+            },
+          },
+          173: {
+            pokemonId: 173,
+            tcgCard: {
+              id: 'sv3-172',
+              name: 'Cleffa',
+              setName: 'Obsidian Flames',
+              number: '172/132',
+              imageUrl: 'https://example.com/cleffa.png',
+            },
+          },
+        },
+        initialQuery: 'Cleffa',
+        forceOpen: true,
+      })
+    )
+
+    expect(html).toContain('Cleffa')
+    expect(html).toContain('Capturado · 172/132')
+  })
+
+  it('renders fallback card badge when assigned card has no number', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(BinderSearchBar, {
+        onSelectPokemon: vi.fn(),
+        collected: {
+          25: {
+            pokemonId: 25,
+            tcgCard: {
+              id: 'custom-card',
+              name: 'Pikachu Special',
+              setName: 'Promo',
+              number: '',
+              imageUrl: 'https://example.com/pika.png',
+            },
+          },
+        },
+        initialQuery: 'Pikachu',
+        forceOpen: true,
+      })
+    )
+
+    expect(html).toContain('Capturado · Carta TCG')
+  })
+
+  it('does not render any collection status badge for uncollected species', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(BinderSearchBar, {
+        onSelectPokemon: vi.fn(),
+        collected: {},
+        initialQuery: 'Mew',
+        forceOpen: true,
+      })
+    )
+
+    expect(html).toContain('Mew')
+    expect(html).not.toContain('Capturado')
+    expect(html).not.toContain('Carta TCG')
   })
 
   it('renders no results message when query has no matches and open', () => {

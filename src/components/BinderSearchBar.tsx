@@ -13,11 +13,30 @@ export function normalizePokemonName(name: string): string {
     .toLowerCase()
 }
 
-export function filterPokemonByName(list: Pokemon[], query: string): Pokemon[] {
+export function filterPokemonByName(
+  list: Pokemon[],
+  query: string,
+  collected?: Record<number, CollectedSlot>
+): Pokemon[] {
   const trimmed = query.trim()
   if (!trimmed) return []
   const normQuery = normalizePokemonName(trimmed)
-  return list.filter((p) => normalizePokemonName(p.name).includes(normQuery)).slice(0, 12)
+  const cleanNum = trimmed.replace(/^#/, "")
+  const isNumeric = /^\d+$/.test(cleanNum)
+  const numericId = isNumeric ? parseInt(cleanNum, 10) : null
+
+  return list
+    .filter((p) => {
+      if (normalizePokemonName(p.name).includes(normQuery)) return true
+      if (numericId !== null && p.id === numericId) return true
+      if (collected && collected[p.id]?.tcgCard) {
+        const card = collected[p.id]!.tcgCard!
+        if (card.number && card.number.toLowerCase().includes(normQuery)) return true
+        if (card.name && normalizePokemonName(card.name).includes(normQuery)) return true
+      }
+      return false
+    })
+    .slice(0, 12)
 }
 
 export function getPokemonPageAndRegion(pokemonId: number): {
@@ -56,7 +75,7 @@ export function BinderSearchBar({
   const inputRef = externalInputRef || internalInputRef
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const matches = useMemo(() => filterPokemonByName(POKEMON, query), [query])
+  const matches = useMemo(() => filterPokemonByName(POKEMON, query, collected), [query, collected])
   const showDropdown = (isOpen || forceOpen) && query.trim().length > 0
 
   useEffect(() => {
@@ -200,7 +219,9 @@ export function BinderSearchBar({
                         className="text-[9px] px-1.5 py-0 h-4 border-violet-500/60 text-violet-300 bg-violet-950/40"
                       >
                         <Sparkles className="size-2.5 mr-0.5 text-violet-400" />
-                        {t("binderSearch.cardAssignedStatus")}
+                        {slot?.tcgCard?.number
+                          ? t("binderSearch.cardAssignedWithNumberStatus", { number: slot.tcgCard.number })
+                          : t("binderSearch.cardAssignedStatus")}
                       </Badge>
                     ) : isCollected ? (
                       <Badge

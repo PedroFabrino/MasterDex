@@ -8,6 +8,7 @@ export interface RawCardData {
   cardName?: string | null
   setName?: string | null
   number?: string | null
+  cardNumber?: string | null
   imageUrl?: string | null
   cardImageUrl?: string | null
   thumbnailUrl?: string | null
@@ -53,7 +54,7 @@ export function toTcgCard(raw: RawCardData | null | undefined): TcgCard | null {
 
   const name = raw.name || raw.cardName || ""
   const setName = raw.setName || id.split("-")[0]?.toUpperCase() || "TCG"
-  const number = raw.number || id.split("-")[1] || "1"
+  const number = raw.number || raw.cardNumber || id.split("-")[1] || "1"
   const imageUrl = raw.imageUrl || raw.cardImageUrl || ""
   const thumbnailUrl = raw.thumbnailUrl || imageUrl
   const language = raw.language || raw.cardLanguage || "en"
@@ -102,6 +103,7 @@ export function mapBackendItemToCollectedSlot(pokemonId: number, item: any): Col
   const card = toTcgCard({
     cardId: item.cardId,
     cardName: item.cardName,
+    cardNumber: item.cardNumber || item.number,
     cardImageUrl: item.cardImageUrl || item.imageUrl,
     cardLanguage: item.cardLanguage,
     thumbnailUrl: item.thumbnailUrl,

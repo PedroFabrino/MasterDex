@@ -224,6 +224,7 @@ export interface TranslationDictionary {
     clearAria: string
     collectedStatus: string
     cardAssignedStatus: string
+    cardAssignedWithNumberStatus: string
   }
   settings: {
     title: string
