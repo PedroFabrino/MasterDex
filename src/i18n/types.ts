@@ -112,7 +112,11 @@ export interface TranslationDictionary {
     exportDesc: string
     exportJson: string
     exportCsv: string
+    exportPortfolioCsv: string
+    exportPortfolioCsvTooltip: string
     exportSuccess: string
+    exportPortfolioSuccess: string
+    exportPortfolioError: string
 
     importTitle: string
     importDesc: string
@@ -347,6 +351,10 @@ export interface TranslationDictionary {
     derivationExact: string
     derivationNearest: string
     derivationFallback: string
+    exportCsvButton: string
+    exportCsvTooltip: string
+    exportSuccess: string
+    exportError: string
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useRef } from "react"
+import React, { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Download, Upload, Loader2 } from "lucide-react"
 import { POKEMON, type CollectedSlot } from "@/data/pokemon"
@@ -20,7 +20,6 @@ interface FileBackupTabProps {
   setStatusMessage: (msg: { type: "success" | "error"; text: string } | null) => void
 }
 
-
 export const FileBackupTab: React.FC<FileBackupTabProps> = ({
   userId,
   collected,
@@ -31,6 +30,26 @@ export const FileBackupTab: React.FC<FileBackupTabProps> = ({
 }) => {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [exportingPortfolio, setExportingPortfolio] = useState(false)
+
+  const handleExportPortfolioCsv = async () => {
+    try {
+      setExportingPortfolio(true)
+      await apiClient.downloadPortfolioCsv(userId || undefined, collected)
+      const count = Object.values(collected).filter((s) => s.tcgCard != null).length
+      setStatusMessage({
+        type: "success",
+        text: t("backupModal.exportPortfolioSuccess", { count }),
+      })
+    } catch (err: any) {
+      setStatusMessage({
+        type: "error",
+        text: t("backupModal.exportPortfolioError", { message: err?.message || String(err) }),
+      })
+    } finally {
+      setExportingPortfolio(false)
+    }
+  }
 
   const handleExportJson = () => {
     const payload = {
@@ -154,12 +173,12 @@ export const FileBackupTab: React.FC<FileBackupTabProps> = ({
         <h4 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
           {t("backupModal.exportTitle")}
         </h4>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <Button
             onClick={handleExportJson}
             variant="outline"
             size="sm"
-            className="flex-1 border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200"
+            className="border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 text-xs"
           >
             <Download className="size-3.5 mr-1.5 text-violet-400" />
             {t("backupModal.exportJson")}
@@ -168,10 +187,25 @@ export const FileBackupTab: React.FC<FileBackupTabProps> = ({
             onClick={handleExportCsv}
             variant="outline"
             size="sm"
-            className="flex-1 border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200"
+            className="border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 text-xs"
           >
             <Download className="size-3.5 mr-1.5 text-emerald-400" />
             {t("backupModal.exportCsv")}
+          </Button>
+          <Button
+            onClick={handleExportPortfolioCsv}
+            disabled={exportingPortfolio}
+            variant="outline"
+            size="sm"
+            className="border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 text-xs"
+            title={t("backupModal.exportPortfolioCsvTooltip")}
+          >
+            {exportingPortfolio ? (
+              <Loader2 className="size-3.5 mr-1.5 animate-spin text-amber-400" />
+            ) : (
+              <Download className="size-3.5 mr-1.5 text-amber-400" />
+            )}
+            {t("backupModal.exportPortfolioCsv")}
           </Button>
         </div>
       </div>

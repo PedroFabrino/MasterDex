@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -6,10 +6,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Briefcase, Sparkles, MapPin, DollarSign } from "lucide-react"
+import { Briefcase, Sparkles, MapPin, DollarSign, Download, Loader2 } from "lucide-react"
 import { useTranslation } from "@/i18n"
+import { apiClient } from "@/lib/apiClient"
 import type { PortfolioSummary, PortfolioTopCard } from "../../../shared/types.js"
 import {
   CONDITION_BASELINE_MULTIPLIERS,
@@ -20,6 +22,8 @@ interface PortfolioModalProps {
   open: boolean
   onClose: () => void
   portfolio: PortfolioSummary | null
+  userId?: string
+  collected?: Record<number, any>
 }
 
 const GEN_COLORS: Record<number, string> = {
@@ -34,8 +38,26 @@ const GEN_COLORS: Record<number, string> = {
   9: "bg-orange-500",
 }
 
-export const PortfolioModal: React.FC<PortfolioModalProps> = ({ open, onClose, portfolio }) => {
+export const PortfolioModal: React.FC<PortfolioModalProps> = ({
+  open,
+  onClose,
+  portfolio,
+  userId,
+  collected,
+}) => {
   const { t, locale } = useTranslation()
+  const [exporting, setExporting] = useState(false)
+
+  const handleExportPortfolioCsv = async () => {
+    try {
+      setExporting(true)
+      await apiClient.downloadPortfolioCsv(userId, collected)
+    } catch (err: any) {
+      console.error('Failed to export portfolio CSV:', err)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const numberLocale = locale === "en" ? "en-US" : "pt-BR"
   const formatBRL = (val: number | null | undefined) => {
@@ -70,18 +92,35 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ open, onClose, p
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-3xl bg-zinc-900 border-zinc-700 text-zinc-100 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="size-9 rounded-full bg-emerald-600/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300">
-              <Briefcase className="size-4" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="size-9 rounded-full bg-emerald-600/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300">
+                <Briefcase className="size-4" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-zinc-100">
+                  {t("portfolio.modalTitle")}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-zinc-400">
+                  {t("portfolio.modalDescription")}
+                </DialogDescription>
+              </div>
             </div>
-            <div>
-              <DialogTitle className="text-lg font-bold text-zinc-100">
-                {t("portfolio.modalTitle")}
-              </DialogTitle>
-              <DialogDescription className="text-xs text-zinc-400">
-                {t("portfolio.modalDescription")}
-              </DialogDescription>
-            </div>
+            <Button
+              onClick={handleExportPortfolioCsv}
+              disabled={exporting || cardCount === 0}
+              variant="outline"
+              size="sm"
+              className="border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 text-xs shrink-0 self-start sm:self-auto"
+              title={t("portfolio.exportCsvTooltip")}
+            >
+              {exporting ? (
+                <Loader2 className="size-3.5 mr-1.5 animate-spin text-amber-400" />
+              ) : (
+                <Download className="size-3.5 mr-1.5 text-amber-400" />
+              )}
+              {t("portfolio.exportCsvButton")}
+            </Button>
           </div>
         </DialogHeader>
 

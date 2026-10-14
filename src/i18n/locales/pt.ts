@@ -111,7 +111,11 @@ export const pt: TranslationDictionary = {
     exportDesc: 'Faça o download do estado atual da sua PokéBinder.',
     exportJson: 'Exportar JSON',
     exportCsv: 'Exportar CSV',
+    exportPortfolioCsv: 'Exportar CSV Portfólio',
+    exportPortfolioCsvTooltip: 'Exportar apenas cartas físicas atribuídas no formato CSV compatível com Collectr / TCGplayer',
     exportSuccess: 'Exportação gerada com sucesso! {count} itens exportados.',
+    exportPortfolioSuccess: 'CSV de portfólio exportado com sucesso! {count} cartas físicas incluídas.',
+    exportPortfolioError: 'Falha ao exportar CSV de portfólio: {message}',
     importTitle: 'Restaurar do Arquivo',
 
     importDesc: 'Selecione um arquivo .json ou .csv exportado anteriormente.',
@@ -338,5 +342,9 @@ export const pt: TranslationDictionary = {
     derivationExact: 'Liga ({condition})',
     derivationNearest: 'Liga (Baseado em {condition})',
     derivationFallback: 'Estimado ({pct}% de NM)',
+    exportCsvButton: 'Exportar CSV Portfólio',
+    exportCsvTooltip: 'Baixar CSV de portfólio compatível com Collectr / TCGplayer',
+    exportSuccess: 'CSV de portfólio baixado com sucesso!',
+    exportError: 'Falha ao exportar CSV de portfólio: {message}',
   },
 }

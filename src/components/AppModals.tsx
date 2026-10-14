@@ -104,6 +104,8 @@ export const AppModals: React.FC<AppModalsProps> = ({
       open={Boolean(portfolioModalOpen)}
       onClose={onClosePortfolioModal ?? (() => {})}
       portfolio={portfolio ?? null}
+      userId={currentUser?.id}
+      collected={collected}
     />
     <BinderScannerModal
       open={scannerModalOpen}

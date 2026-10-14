@@ -233,3 +233,9 @@ _Avoid_: Share ID, profile code, binder hash
 The branded empty state interface displayed to visitors when a Shared Binder link is private, disabled, or non-existent.
 _Avoid_: Error page, 404 card, not found screen
 
+### Inventory & Exports
+
+**Portfolio CSV Export**:
+A standardized comma-separated values export file structured for third-party portfolio tracking platforms (e.g., Collectr), containing all collector-assigned physical TCG cards with columns: `Card`, `Set`, `Game`, `Variant`, `Kind`, `Condition`, `Grade`, `Quantity`, `PurchasePrice (USD)`, `MarketPrice (USD)`, and `Currency`.
+_Avoid_: Card dump, collection sheet, raw CSV
+

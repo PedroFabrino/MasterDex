@@ -330,4 +330,56 @@ export const apiClient = {
     }
     return res.json()
   },
+
+  async downloadPortfolioCsv(
+    userId?: string,
+    collected?: Record<number, any>
+  ): Promise<void> {
+    let res: Response
+    if (userId) {
+      res = await fetch(`/api/collection/export?userId=${encodeURIComponent(userId)}&format=portfolio_csv`)
+    } else {
+      const items = Object.values(collected || {})
+        .filter((slot: any) => slot && slot.tcgCard != null)
+        .map((slot: any) => ({
+          pokedexId: slot.pokemonId,
+          cardId: slot.tcgCard.id,
+          cardName: slot.tcgCard.name,
+          setName: slot.tcgCard.setName,
+          cardCondition: slot.cardCondition,
+          isHolo: slot.tcgCard.isHolo,
+        }))
+      res = await fetch('/api/collection/export-portfolio-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      })
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || `Failed to export portfolio CSV (${res.status})`)
+    }
+
+    const blob = await res.blob()
+    const urlObj = typeof window !== "undefined" ? window.URL : URL
+    const url = urlObj.createObjectURL(blob)
+    if (typeof document !== "undefined") {
+      const a = document.createElement("a")
+      a.href = url
+      a.download = userId ? `masterdex-portfolio-${userId}.csv` : "masterdex-portfolio.csv"
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+    }
+    urlObj.revokeObjectURL(url)
+  },
+
+  async exportPortfolioCsv(
+    userId?: string,
+    collected?: Record<number, any>
+  ): Promise<void> {
+    return this.downloadPortfolioCsv(userId, collected)
+  },
 }
+

@@ -5,6 +5,7 @@ import { sheetSeedService } from '../services/sheetSeedService.js'
 import { verifySessionToken } from '../services/authService.js'
 import { tcgdexPricingService } from '../services/tcgdexPricingService.js'
 import { cardConditionScraperService } from '../services/cardConditionScraperService.js'
+import { portfolioExportService } from '../services/portfolioExportService.js'
 
 export const collectionRoutes = new Hono()
 
@@ -334,6 +335,14 @@ collectionRoutes.get('/export', async (c) => {
       })
     }
 
+    if (format === 'portfolio_csv') {
+      const csv = await portfolioExportService.exportForUser(userId)
+      return c.text(csv, 200, {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="masterdex-portfolio-${userId}.csv"`,
+      })
+    }
+
     return c.json({
       userId,
       exportedAt: new Date().toISOString(),
@@ -344,3 +353,19 @@ collectionRoutes.get('/export', async (c) => {
     return c.json({ error: error?.message || 'Failed to export collection' }, 500)
   }
 })
+
+// POST /api/collection/export-portfolio-csv
+collectionRoutes.post('/export-portfolio-csv', async (c) => {
+  try {
+    const body = await c.req.json()
+    const rawItems = Array.isArray(body) ? body : body.items || body.slots || []
+    const csv = await portfolioExportService.exportFromItems(rawItems)
+    return c.text(csv, 200, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="masterdex-portfolio.csv"',
+    })
+  } catch (error: any) {
+    return c.json({ error: error?.message || 'Failed to export portfolio CSV' }, 500)
+  }
+})
+
