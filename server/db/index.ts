@@ -137,14 +137,6 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
   `)
 
   await client.execute(`
-    CREATE INDEX IF NOT EXISTS idx_card_prices_card_provider ON card_prices (card_id, provider);
-  `)
-
-  await client.execute(`
-    CREATE INDEX IF NOT EXISTS idx_card_prices_card_provider_cond ON card_prices (card_id, provider, condition);
-  `)
-
-  await client.execute(`
     CREATE TABLE IF NOT EXISTS exchange_rates (
       pair TEXT PRIMARY KEY,
       rate REAL NOT NULL,
@@ -152,7 +144,7 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
     );
   `)
 
-  // Defensive migrations for pre-existing databases
+  // Defensive migrations for pre-existing databases (run before creating dependent indexes)
   for (const col of [
     "target_rarity TEXT NOT NULL DEFAULT 'any'",
     "hidden_expansions TEXT NOT NULL DEFAULT '[]'",
@@ -185,6 +177,22 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
     await client.execute(`ALTER TABLE card_prices ADD COLUMN condition TEXT NOT NULL DEFAULT 'NM';`)
   } catch {
     // Column already exists, safe to ignore
+  }
+
+  try {
+    await client.execute(`
+      CREATE INDEX IF NOT EXISTS idx_card_prices_card_provider ON card_prices (card_id, provider);
+    `)
+  } catch {
+    // Ignore index error if already exists
+  }
+
+  try {
+    await client.execute(`
+      CREATE INDEX IF NOT EXISTS idx_card_prices_card_provider_cond ON card_prices (card_id, provider, condition);
+    `)
+  } catch {
+    // Ignore index error if already exists
   }
 
   for (const col of ['logo_url TEXT', 'symbol_url TEXT', 'ligapokemon_code TEXT']) {
@@ -232,6 +240,7 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
           id TEXT PRIMARY KEY,
           card_id TEXT NOT NULL,
           provider TEXT NOT NULL,
+          condition TEXT NOT NULL DEFAULT 'NM',
           native_price REAL NOT NULL,
           currency TEXT NOT NULL,
           recorded_at INTEGER NOT NULL
@@ -241,6 +250,7 @@ export async function ensureDatabaseTables(client: Client = rawClient): Promise<
       await client.execute(`DROP TABLE card_prices;`)
       await client.execute(`ALTER TABLE card_prices_clean RENAME TO card_prices;`)
       await client.execute(`CREATE INDEX IF NOT EXISTS idx_card_prices_card_provider ON card_prices (card_id, provider);`)
+      await client.execute(`CREATE INDEX IF NOT EXISTS idx_card_prices_card_provider_cond ON card_prices (card_id, provider, condition);`)
     }
   } catch {
     // Ignore migration error if table does not exist yet
