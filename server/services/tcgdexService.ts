@@ -206,7 +206,7 @@ export class TcgDexService {
       // Specific query term filtering when dexId is provided and query specifies extra keywords (e.g. "30th", "celebration", "Charizard 30th")
       if (resolvedDexId && parsed.name) {
         const rawTokens = parsed.name.toLowerCase().trim().split(/\s+/).filter(Boolean)
-        const filterTokens = rawTokens.filter((t) => investmentService.resolvePokemonId(t) !== resolvedDexId)
+        const filterTokens = rawTokens.filter((t) => t.length > 1 && investmentService.resolvePokemonId(t) !== resolvedDexId)
         if (filterTokens.length > 0) {
           const matchingResults = results.filter((c) => {
             const setName = (c.set?.name || '').toLowerCase()

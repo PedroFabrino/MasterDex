@@ -260771,7 +260771,7 @@
     "localId": 1,
     "name": "Charizard",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/base/base1/4/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 6
@@ -260782,7 +260782,7 @@
     "localId": 2,
     "name": "Delcatty",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/ex/ex1/29/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 301
@@ -260793,7 +260793,7 @@
     "localId": 3,
     "name": "Metagross",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/ex/ex5/11/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 376
@@ -260804,7 +260804,7 @@
     "localId": 4,
     "name": "Genesect EX",
     "rarity": "Ultra Rare",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/bw/bw10/11/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 649
@@ -260815,7 +260815,7 @@
     "localId": 5,
     "name": "Misty",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/gym/gym1/18/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": null
@@ -260826,7 +260826,7 @@
     "localId": 6,
     "name": "Dark Tyranitar",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/ex/ex7/19/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 248
@@ -260837,7 +260837,7 @@
     "localId": 7,
     "name": "Sneasel",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/neo/neo1/25/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 215
@@ -260848,7 +260848,7 @@
     "localId": 8,
     "name": "Pikachu & Zekrom GX",
     "rarity": "Ultra Rare",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/sm/sm9/33/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 25
@@ -260859,7 +260859,7 @@
     "localId": 9,
     "name": "Greninja BREAK",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/xy/xy9/41/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 658
@@ -260870,7 +260870,7 @@
     "localId": 10,
     "name": "Uxie",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/dp/dp6/43/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 480
@@ -260881,7 +260881,7 @@
     "localId": 11,
     "name": "Crobat G",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/pl/pl1/47/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 169
@@ -260892,7 +260892,7 @@
     "localId": 12,
     "name": "Raikou",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/neo/neo3/22/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 243
@@ -260903,7 +260903,7 @@
     "localId": 13,
     "name": "Buzzwole GX",
     "rarity": "Ultra Rare",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/sm/sm4/57/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 794
@@ -260914,7 +260914,7 @@
     "localId": 14,
     "name": "Pikachu",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/base/base1/58/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 25
@@ -260925,7 +260925,7 @@
     "localId": 15,
     "name": "Erika's Jigglypuff",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/gym/gym2/69/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 39
@@ -260936,7 +260936,7 @@
     "localId": 16,
     "name": "Rayquaza EX",
     "rarity": "Ultra Rare",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/ex/ex3/97/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 384
@@ -260947,7 +260947,7 @@
     "localId": 17,
     "name": "Solgaleo GX",
     "rarity": "Ultra Rare",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/sm/sm1/89/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 791
@@ -260958,7 +260958,7 @@
     "localId": 18,
     "name": "Gengar",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/dp/dp7/18/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 94
@@ -260969,7 +260969,7 @@
     "localId": 19,
     "name": "Darkrai & Cresselia LEGEND",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/hgss/hgss4/99/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 488
@@ -260980,7 +260980,7 @@
     "localId": 20,
     "name": "Darkrai & Cresselia LEGEND",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/hgss/hgss4/100/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 488
@@ -260991,7 +260991,7 @@
     "localId": 21,
     "name": "N",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/bw/bw3/92/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": null
@@ -261002,7 +261002,7 @@
     "localId": 22,
     "name": "Palkia",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/col/col1/19/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 484
@@ -261013,7 +261013,7 @@
     "localId": 23,
     "name": "M Gardevoir EX",
     "rarity": "Ultra Rare",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/xy/xy5/106/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 282
@@ -261024,7 +261024,7 @@
     "localId": 24,
     "name": "Shining Celebi",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/neo/neo4/106/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 251
@@ -261035,7 +261035,7 @@
     "localId": 25,
     "name": "Scizor ex",
     "rarity": "Ultra Rare",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/ex/ex10/108/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 212
@@ -261046,7 +261046,7 @@
     "localId": 26,
     "name": "Mew VMAX",
     "rarity": "Ultra Rare",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/swsh/swsh8/114/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 151
@@ -261057,7 +261057,7 @@
     "localId": 27,
     "name": "Arceus VSTAR",
     "rarity": "Ultra Rare",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/swsh/swsh9/123/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 493
@@ -261068,7 +261068,7 @@
     "localId": 28,
     "name": "Zacian V",
     "rarity": "Ultra Rare",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/swsh/swsh1/138/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 888
@@ -261079,7 +261079,7 @@
     "localId": 29,
     "name": "Lugia",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/neo/neo1/9/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 249
@@ -261090,7 +261090,7 @@
     "localId": 30,
     "name": "Magikarp",
     "rarity": "Common",
-    "imageUrl": null,
+    "imageUrl": "https://assets.tcgdex.net/en/base/base1/35/high.webp",
     "marketPrice": 0,
     "isSecret": false,
     "pokedexId": 129

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Briefcase, Sparkles, MapPin, DollarSign, Download, Loader2 } from "lucide-react"
 import { useTranslation } from "@/i18n"
+import { handleCardImageError } from "@/lib/cardImageFallback"
 import { apiClient } from "@/lib/apiClient"
 import type { PortfolioSummary, PortfolioTopCard } from "../../../shared/types.js"
 import {
@@ -207,6 +208,7 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({
                             alt={card.name}
                             className="w-full h-full object-cover"
                             loading="lazy"
+                            onError={(e) => handleCardImageError(e, card.pokedexId ?? undefined)}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-zinc-700 text-[10px]">

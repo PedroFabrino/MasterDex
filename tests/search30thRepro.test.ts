@@ -60,4 +60,26 @@ describe('30th anniversary cards search regression tests', () => {
     expect(charizard.set.id).toBe('30th-c')
     expect(charizard.set.name).toBe('30th Classic Collection')
   })
+
+  it('GET /api/tcg/cards/search returns Darkrai & Cresselia LEGEND when searching in Darkrai selector (dexId: 491)', async () => {
+    const res = await app.request('/api/tcg/cards/search?q=Darkrai&dexId=491&limit=100')
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as any
+    const legends = body.results.filter((c: any) => c.name.toLowerCase().includes('cresselia'))
+    expect(legends.length).toBeGreaterThan(0)
+    const thClassic = legends.filter((c: any) => c.set?.id === '30th-c')
+    expect(thClassic.length).toBe(2)
+    expect(thClassic[0].imageUrl).toMatch(/\.(webp|png)$/)
+    expect(thClassic[0].imageUrl).not.toContain('30th-c/019/high.webp') // Uses authentic scan
+  })
+
+  it('GET /api/tcg/cards/search returns 30th Darkrai & Cresselia LEGEND when filtering by "30th" in Darkrai selector (dexId: 491)', async () => {
+    const res = await app.request('/api/tcg/cards/search?q=30th&dexId=491&limit=50')
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as any
+    expect(body.results.length).toBe(2)
+    expect(body.results[0].id).toBe('30th-c-019')
+    expect(body.results[1].id).toBe('30th-c-020')
+    expect(body.results[0].set.name).toBe('30th Classic Collection')
+  })
 })

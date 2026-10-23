@@ -24,6 +24,24 @@ export function formatTcgdexImageUrl(url?: string | null, ext = 'png'): string |
 let baselineCardsCache: CardRecord[] | null = null
 let baselineCardsByExp: Map<string, CardRecord[]> | null = null
 
+let pokedexMapCache: Map<number, string> | null = null
+
+function getSpeciesNameById(id: number): string | undefined {
+  if (!pokedexMapCache) {
+    pokedexMapCache = new Map()
+    try {
+      const pPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../src/data/pokedex.json')
+      if (fs.existsSync(pPath)) {
+        const list = JSON.parse(fs.readFileSync(pPath, 'utf-8')) as Array<{ id: number; name: string }>
+        for (const item of list) {
+          pokedexMapCache.set(item.id, item.name.toLowerCase())
+        }
+      }
+    } catch {}
+  }
+  return pokedexMapCache.get(id)
+}
+
 function loadBaselineCards(): { all: CardRecord[]; byExp: Map<string, CardRecord[]> } {
   if (baselineCardsCache && baselineCardsByExp) {
     return { all: baselineCardsCache, byExp: baselineCardsByExp }
@@ -341,8 +359,17 @@ export class ExpansionsRepository {
     name?: string
   }): Promise<CardRecord[]> {
     const all = await this.getAllCards()
+    const speciesName = opts.pokedexId ? getSpeciesNameById(opts.pokedexId) : undefined
+    const speciesRegex = speciesName
+      ? new RegExp(`(^|\\s|[-&/])${speciesName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}($|\\s|[-&/])`, 'i')
+      : null
+
     return all.filter((c) => {
-      if (opts.pokedexId !== undefined && c.pokedexId !== opts.pokedexId) return false
+      if (opts.pokedexId !== undefined) {
+        const matchesPokedex = c.pokedexId === opts.pokedexId
+        const matchesSpeciesName = speciesRegex ? speciesRegex.test(c.name) : false
+        if (!matchesPokedex && !matchesSpeciesName) return false
+      }
       if (opts.localId !== undefined && c.localId !== opts.localId) return false
       if (opts.name && !c.name.toLowerCase().includes(opts.name.toLowerCase())) return false
       return true

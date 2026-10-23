@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Star, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTranslation } from "@/i18n"
+import { handleCardImageError } from "@/lib/cardImageFallback"
 
 export interface CardSelectorGridProps {
   pokemon: Pokemon
@@ -58,13 +59,7 @@ function TcgCardSlotButton({
           alt={`${card.name} ${card.number}`}
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={(e) => {
-            const tImg = e.currentTarget
-            tImg.src = pokemon.spriteUrl
-            tImg.style.imageRendering = "pixelated"
-            tImg.style.objectFit = "contain"
-            tImg.classList.add("p-2")
-          }}
+          onError={(e) => handleCardImageError(e, pokemon.id, pokemon.spriteUrl)}
         />
       </div>
       <div className="w-full text-center space-y-0.5">

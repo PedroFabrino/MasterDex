@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTranslation } from "@/i18n"
+import { handleCardImageError } from "@/lib/cardImageFallback"
 
 export interface CardSlotProps {
   pokemon: Pokemon
@@ -173,13 +174,7 @@ function TcgCardFace({ card, pokemon }: { card: TcgCard; pokemon: Pokemon }) {
         src={card.imageUrl}
         alt={`${card.name} ${card.number}`}
         className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-400"
-        onError={(e) => {
-          const t = e.currentTarget
-          t.src = pokemon.spriteUrl
-          t.style.imageRendering = "pixelated"
-          t.style.objectFit = "contain"
-          t.classList.add("p-4")
-        }}
+        onError={(e) => handleCardImageError(e, pokemon.id, pokemon.spriteUrl)}
         draggable={false}
       />
       {card.isHolo && (
