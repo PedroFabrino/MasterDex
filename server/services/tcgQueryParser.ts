@@ -18,8 +18,8 @@ export function parseTcgQuery(rawQuery: string): ParsedTcgQuery {
     return { name: '' }
   }
 
-  // Direct hyphenated card id, e.g. "mep-023", "base1-4"
-  const hyphenMatch = trimmed.match(/^([a-z0-9.]+)-([a-z0-9]+)$/i)
+  // Direct hyphenated card id, e.g. "mep-023", "base1-4", "swsh12.5gg-GG48"
+  const hyphenMatch = trimmed.match(/^([a-z0-9.]+)-(\d+[a-z]?|[a-z]{1,4}\d+)$/i)
   if (hyphenMatch) {
     return {
       name: hyphenMatch[1],

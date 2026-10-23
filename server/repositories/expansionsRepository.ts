@@ -12,7 +12,7 @@ import {
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { tcgdexService } from '../services/tcgdexService.js'
+import { tcgdexSetsService } from '../services/tcgdexSetsService.js'
 
 export function formatTcgdexImageUrl(url?: string | null, ext = 'png'): string | null {
   if (!url) return null
@@ -136,7 +136,7 @@ export class ExpansionsRepository {
     }
 
     const existingSlugs = new Set(existingList.map((e) => e.slug))
-    const sets = await tcgdexService.getAllSets()
+    const sets = await tcgdexSetsService.getAllSets()
 
     const newExpansions: InsertExpansion[] = []
     for (const s of sets) {
@@ -225,14 +225,18 @@ export class ExpansionsRepository {
   }
 
   async getAllCardsByExpansionId(expansionId: string): Promise<CardRecord[]> {
-    const dbCards = await db
-      .select()
-      .from(cards)
-      .where(eq(cards.expansionId, expansionId))
-      .orderBy(cards.localId)
+    try {
+      const dbCards = await db
+        .select()
+        .from(cards)
+        .where(eq(cards.expansionId, expansionId))
+        .orderBy(cards.localId)
 
-    if (dbCards.length > 0) {
-      return dbCards
+      if (dbCards.length > 0) {
+        return dbCards
+      }
+    } catch {
+      // fallback to baseline
     }
 
     const { byExp } = loadBaselineCards()
@@ -241,7 +245,13 @@ export class ExpansionsRepository {
   }
 
   async getAllCards(): Promise<CardRecord[]> {
-    const dbCards = await db.select().from(cards)
+    let dbCards: CardRecord[] = []
+    try {
+      dbCards = await db.select().from(cards)
+    } catch {
+      // fallback to baseline
+    }
+
     const { all: baseline } = loadBaselineCards()
     if (dbCards.length === 0) {
       return baseline
@@ -258,8 +268,12 @@ export class ExpansionsRepository {
   }
 
   async getCardById(cardId: string): Promise<CardRecord | undefined> {
-    const rows = await db.select().from(cards).where(eq(cards.id, cardId)).limit(1)
-    if (rows.length > 0) return rows[0]
+    try {
+      const rows = await db.select().from(cards).where(eq(cards.id, cardId)).limit(1)
+      if (rows.length > 0) return rows[0]
+    } catch {
+      // fallback to baseline
+    }
     const { all } = loadBaselineCards()
     return all.find((c) => c.id === cardId)
   }

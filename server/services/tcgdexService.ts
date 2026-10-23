@@ -1,31 +1,15 @@
-import fs from 'node:fs'
 import type { TcgCardSearchResult } from '../../shared/types.js'
 import { parseTcgQuery, type ParsedTcgQuery } from './tcgQueryParser.js'
 import { tcgdexRarityService } from './tcgdexRarity.js'
 import { investmentService } from './investmentService.js'
 import { ptcgAssetService } from './ptcgAssetService.js'
+import { tcgdexSetsService, type TcgDexSetBrief } from './tcgdexSetsService.js'
+import { tcgdexApiClient, type TcgDexBriefCard } from './tcgdexApiClient.js'
+import { expansionsRepository } from '../repositories/expansionsRepository.js'
 
-interface TcgDexBriefCard {
-  id: string
-  localId: string
-  name: string
-  image?: string
-}
-
-export interface TcgDexSetBrief {
-  id: string
-  name: string
-  logo?: string
-  symbol?: string
-  cardCount?: {
-    total?: number
-    official?: number
-  }
-}
+export type { TcgDexSetBrief }
 
 export class TcgDexService {
-  private setsCache: Map<string, { id: string; name: string; total?: number }> = new Map()
-  private setsLoadedAt = 0
   private queryCache: Map<string, { timestamp: number; results: TcgCardSearchResult[] }> = new Map()
   private fullResultsCache: Map<string, { timestamp: number; results: TcgCardSearchResult[] }> = new Map()
   private cacheTtlMs = 1000 * 60 * 30 // 30 minutes
@@ -39,157 +23,19 @@ export class TcgDexService {
   }
 
   loadFallbackSets(): TcgDexSetBrief[] {
-    try {
-      const fallbackPath = new URL('../../src/data/tcgdexSets.json', import.meta.url)
-      const raw = fs.readFileSync(fallbackPath, 'utf-8')
-      return JSON.parse(raw) as TcgDexSetBrief[]
-    } catch {
-      return []
-    }
+    return tcgdexSetsService.loadFallbackSets()
   }
 
   loadJapaneseSets(): TcgDexSetBrief[] {
-    try {
-      const jaPath = new URL('../../src/data/tcgdexJapaneseSets.json', import.meta.url)
-      const rawJa = fs.readFileSync(jaPath, 'utf-8')
-      return JSON.parse(rawJa) as TcgDexSetBrief[]
-    } catch {
-      return []
-    }
+    return tcgdexSetsService.loadJapaneseSets()
   }
 
   async getAllSets(): Promise<TcgDexSetBrief[]> {
-    const fallback = this.loadFallbackSets()
-    if (fallback.length >= 220) {
-      return fallback
-    }
-
-    try {
-      const res = await fetch('https://api.tcgdex.net/v2/en/sets', { signal: AbortSignal.timeout(2000) })
-      if (res.ok) {
-        const sets = (await res.json()) as TcgDexSetBrief[]
-        if (Array.isArray(sets) && sets.length > 0) {
-          return sets
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to fetch sets from TCGdex API, using local catalog:', err)
-    }
-
-    return fallback
+    return tcgdexSetsService.getAllSets()
   }
 
   async getSetsMap(): Promise<Map<string, { id: string; name: string; total?: number }>> {
-    const now = Date.now()
-    if (this.setsCache.size > 0 && now - this.setsLoadedAt < this.cacheTtlMs) {
-      return this.setsCache
-    }
-
-    const sets = await this.getAllSets()
-    if (sets.length > 0) {
-      this.setsCache.clear()
-      for (const s of sets) {
-        this.setsCache.set(s.id.toLowerCase(), {
-          id: s.id,
-          name: s.name,
-          total: s.cardCount?.official || s.cardCount?.total,
-        })
-      }
-      const jaSets = this.loadJapaneseSets()
-      for (const s of jaSets) {
-        this.setsCache.set(s.id.toLowerCase(), {
-          id: s.id,
-          name: s.name,
-          total: s.cardCount?.official || s.cardCount?.total,
-        })
-      }
-      this.setsLoadedAt = now
-    }
-
-    return this.setsCache
-  }
-
-  private async fetchCardsForLanguage(
-    langCode: string,
-    parsed: ParsedTcgQuery,
-    dexId?: number
-  ): Promise<Array<TcgDexBriefCard & { language: string }>> {
-    const base = `https://api.tcgdex.net/v2/${langCode}`
-    let rawCards: TcgDexBriefCard[] = []
-
-    try {
-      if (dexId) {
-        const url = `${base}/dex-ids/${dexId}`
-        const res = await fetch(url, { signal: AbortSignal.timeout(4500) })
-        if (res.ok) {
-          const data = (await res.json()) as { cards?: TcgDexBriefCard[] }
-          rawCards = Array.isArray(data.cards) ? data.cards : []
-        }
-      } else {
-        // Direct card ID lookup (e.g. "mep-023")
-        if (parsed.name && parsed.localId) {
-          try {
-            const cardId = `${parsed.name.toLowerCase()}-${parsed.localId}`
-            const directRes = await fetch(`${base}/cards/${encodeURIComponent(cardId)}`, {
-              signal: AbortSignal.timeout(3000),
-            })
-            if (directRes.ok) {
-              const cardData = (await directRes.json()) as TcgDexBriefCard
-              if (cardData && cardData.id) {
-                rawCards = [cardData]
-              }
-            }
-          } catch {
-            // Ignore direct lookup error
-          }
-        }
-
-        // Set ID cards lookup if no direct card and name matches a set (e.g. "mep")
-        if (rawCards.length === 0 && parsed.name && !parsed.name.includes(' ')) {
-          try {
-            const setRes = await fetch(`${base}/sets/${encodeURIComponent(parsed.name.toLowerCase())}`, {
-              signal: AbortSignal.timeout(3000),
-            })
-            if (setRes.ok) {
-              const setData = (await setRes.json()) as { cards?: TcgDexBriefCard[] }
-              if (Array.isArray(setData.cards)) {
-                rawCards = setData.cards
-              }
-            }
-          } catch {
-            // Ignore set lookup error
-          }
-        }
-
-        if (rawCards.length === 0) {
-          const searchParam = parsed.name || parsed.localId || ''
-          if (searchParam) {
-            const url = `${base}/cards?name=${encodeURIComponent(searchParam)}`
-            const res = await fetch(url, { signal: AbortSignal.timeout(4500) })
-            if (res.ok) {
-              const data = (await res.json()) as TcgDexBriefCard[]
-              rawCards = Array.isArray(data) ? data : []
-            } else if (parsed.name && parsed.name.includes(' ')) {
-              const firstWord = parsed.name.split(' ')[0]
-              const fallbackRes = await fetch(`${base}/cards?name=${encodeURIComponent(firstWord)}`, {
-                signal: AbortSignal.timeout(4500),
-              })
-              if (fallbackRes.ok) {
-                const data = (await fallbackRes.json()) as TcgDexBriefCard[]
-                rawCards = Array.isArray(data) ? data : []
-              }
-            }
-          }
-        }
-      }
-    } catch {
-      // Continue on timeout or language error
-    }
-
-    return rawCards.map((c) => ({
-      ...c,
-      language: langCode,
-    }))
+    return tcgdexSetsService.getSetsMap()
   }
 
   async searchCards(
@@ -223,14 +69,54 @@ export class TcgDexService {
 
       let rawCards: Array<TcgDexBriefCard & { language: string }> = []
 
+      // Fetch local baseline cards from repository for resolved Pokémon species (for 'all' or 'en')
+      let localCards: Array<TcgDexBriefCard & { language: string }> = []
+      if (lang === 'all' || lang === 'en') {
+        if (resolvedDexId) {
+          try {
+            const matched = await expansionsRepository.findMatchingCards({ pokedexId: resolvedDexId })
+            localCards = matched.map((c) => ({
+              id: c.id,
+              localId: String(c.localId),
+              name: c.name,
+              image: c.imageUrl || undefined,
+              imageUrl: c.imageUrl,
+              language: 'en',
+            }))
+          } catch (err) {
+            console.warn('[tcgdexService] Could not retrieve local matching cards:', err)
+          }
+        } else if (parsed.name) {
+          const cleanName = parsed.name.toLowerCase().trim()
+          if (cleanName === '30th' || cleanName === '30th-c' || cleanName.includes('30th celebration') || cleanName.includes('30th classic')) {
+            const targetExpId = (cleanName.includes('-c') || cleanName.includes('classic')) ? '30th-c' : '30th'
+            try {
+              const expCards = await expansionsRepository.getAllCardsByExpansionId(targetExpId)
+              localCards = expCards.map((c) => ({
+                id: c.id,
+                localId: String(c.localId),
+                name: c.name,
+                image: c.imageUrl || undefined,
+                imageUrl: c.imageUrl,
+                language: 'en',
+              }))
+            } catch (err) {
+              console.warn('[tcgdexService] Could not retrieve local expansion cards:', err)
+            }
+          }
+        }
+      }
+
       if (lang === 'all') {
-        // Smart parallel queries across Portuguese (PT), English (EN), and Japanese (JA) endpoints
         const [ptCards, enCards, jaCards] = await Promise.all([
-          this.fetchCardsForLanguage('pt', parsed, resolvedDexId),
-          this.fetchCardsForLanguage('en', parsed, resolvedDexId),
-          this.fetchCardsForLanguage('ja', parsed, resolvedDexId),
+          tcgdexApiClient.fetchCardsForLanguage('pt', parsed, resolvedDexId),
+          tcgdexApiClient.fetchCardsForLanguage('en', parsed, resolvedDexId),
+          tcgdexApiClient.fetchCardsForLanguage('ja', parsed, resolvedDexId),
         ])
         const cardMap = new Map<string, TcgDexBriefCard & { language: string }>()
+        for (const c of localCards) {
+          cardMap.set(c.id, c)
+        }
         for (const c of [...ptCards, ...enCards, ...jaCards]) {
           const existing = cardMap.get(c.id)
           if (!existing) {
@@ -241,13 +127,27 @@ export class TcgDexService {
         }
         rawCards = Array.from(cardMap.values())
 
-        // Fallback to Chinese if zero cards match
         if (rawCards.length === 0) {
-          const zhCards = await this.fetchCardsForLanguage('zh-tw', parsed, resolvedDexId)
+          const zhCards = await tcgdexApiClient.fetchCardsForLanguage('zh-tw', parsed, resolvedDexId)
           rawCards = zhCards
         }
       } else {
-        rawCards = await this.fetchCardsForLanguage(lang, parsed, resolvedDexId)
+        const remoteCards = await tcgdexApiClient.fetchCardsForLanguage(lang, parsed, resolvedDexId)
+        const cardMap = new Map<string, TcgDexBriefCard & { language: string }>()
+        if (lang === 'en') {
+          for (const c of localCards) {
+            cardMap.set(c.id, c)
+          }
+        }
+        for (const c of remoteCards) {
+          const existing = cardMap.get(c.id)
+          if (!existing) {
+            cardMap.set(c.id, c)
+          } else if (!existing.image && c.image) {
+            cardMap.set(c.id, { ...existing, image: c.image })
+          }
+        }
+        rawCards = Array.from(cardMap.values())
       }
 
       if (
@@ -258,32 +158,35 @@ export class TcgDexService {
         rawCards = rawCards.filter((c) => !c.name.toLowerCase().includes('mewtwo'))
       }
 
-      // Build mapped results
+      // Build mapped results with accurate hyphenated setId resolution and CDN image preservation
       const results: TcgCardSearchResult[] = []
       for (const card of rawCards) {
-        const setId = (card.id.split('-')[0] || '').toLowerCase()
+        const lastHyphenIndex = card.id.lastIndexOf('-')
+        const setId = (lastHyphenIndex > 0 ? card.id.slice(0, lastHyphenIndex) : card.id).toLowerCase()
+        const localId = lastHyphenIndex > 0 ? card.id.slice(lastHyphenIndex + 1) : card.localId
         const setMeta = setsMap.get(setId)
 
-        const defaultAssetUrl = `https://assets.tcgdex.net/${card.language || 'en'}/${setId}/${card.localId}`
-        const imageUrl = card.image
-          ? card.image.endsWith('.webp') || card.image.endsWith('.png')
-            ? card.image
-            : `${card.image}/high.webp`
+        const defaultAssetUrl = `https://assets.tcgdex.net/${card.language || 'en'}/${setId}/${localId}`
+        const explicitImage = card.image || card.imageUrl
+        const imageUrl = explicitImage
+          ? explicitImage.endsWith('.webp') || explicitImage.endsWith('.png')
+            ? explicitImage
+            : `${explicitImage}/high.webp`
           : `${defaultAssetUrl}/high.webp`
 
-        const thumbnailUrl = card.image
-          ? card.image.endsWith('.webp') || card.image.endsWith('.png')
-            ? card.image
-            : `${card.image}/low.webp`
+        const thumbnailUrl = explicitImage
+          ? explicitImage.endsWith('.webp') || explicitImage.endsWith('.png')
+            ? explicitImage.replace(/\/high\.(webp|png)$/i, '/low.$1')
+            : `${explicitImage}/low.webp`
           : `${defaultAssetUrl}/low.webp`
 
         if (!imageUrl) continue
 
-        const rarityInfo = this.getCardRarity(card, setMeta?.total)
+        const rarityInfo = this.getCardRarity({ ...card, localId }, setMeta?.total)
 
         results.push({
           id: card.id,
-          localId: card.localId,
+          localId,
           name: card.name,
           set: {
             id: setId,
@@ -294,15 +197,41 @@ export class TcgDexService {
           thumbnailUrl,
           rarity: rarityInfo.rarity,
           language: card.language || 'en',
-          ...(!card.image ? { _missingScan: true } : {}),
+          ...(!explicitImage ? { _missingScan: true } : {}),
         } as TcgCardSearchResult)
       }
 
-      // Exact localId matching when a collector number is specified in query
       finalResults = results
+
+      // Specific query term filtering when dexId is provided and query specifies extra keywords (e.g. "30th", "celebration", "Charizard 30th")
+      if (resolvedDexId && parsed.name) {
+        const rawTokens = parsed.name.toLowerCase().trim().split(/\s+/).filter(Boolean)
+        const filterTokens = rawTokens.filter((t) => investmentService.resolvePokemonId(t) !== resolvedDexId)
+        if (filterTokens.length > 0) {
+          const matchingResults = results.filter((c) => {
+            const setName = (c.set?.name || '').toLowerCase()
+            const setId = (c.set?.id || '').toLowerCase()
+            const cardName = c.name.toLowerCase()
+            const cardId = c.id.toLowerCase()
+            const localId = c.localId.toLowerCase()
+            return filterTokens.every((token) =>
+              setName.includes(token) ||
+              setId.includes(token) ||
+              cardName.includes(token) ||
+              cardId.includes(token) ||
+              localId === token
+            )
+          })
+          if (matchingResults.length > 0) {
+            finalResults = matchingResults
+          }
+        }
+      }
+
+      // Exact localId matching when a collector number is specified in query
       if (parsed.localId) {
         const targetLocalId = parsed.localId.toLowerCase().replace(/^0+/, '')
-        const exactMatches = results.filter((c) => c.localId.toLowerCase().replace(/^0+/, '') === targetLocalId)
+        const exactMatches = finalResults.filter((c) => c.localId.toLowerCase().replace(/^0+/, '') === targetLocalId)
         if (exactMatches.length > 0) {
           finalResults = exactMatches
         }
@@ -337,7 +266,7 @@ export class TcgDexService {
     const enrichedResults = await Promise.all(
       trimmedResults.map(async (card) => {
         if ((card as any)._missingScan && card.language !== 'ja') {
-          const setId = (card.id.split('-')[0] || '').toLowerCase()
+          const setId = card.set?.id || (card.id.split('-')[0] || '').toLowerCase()
           const isPromoOrGallery =
             setId === 'mep' ||
             setId.endsWith('p') ||
